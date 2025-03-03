@@ -1,0 +1,20 @@
+version: '2'
+services:
+  php:
+    build: php
+    ports:
+    - "8180:80" # port where webpage will be accessible (8180)
+    - "8443:443"
+    volumes:
+    - ./php/www:/var/www/html
+    links:
+    - db
+  db:
+    image: mysql:5.7
+    volumes:
+    - /var/lib/mysql
+    environment:
+    - MYSQL_ROOT_PASSWORD=hunter2
+    - MYSQL_DATABASE=database
+    ports:
+    - "33060:3306" # maps container's 3306 to host's 33060 (to access via MySql workbench)
