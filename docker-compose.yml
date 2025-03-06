@@ -1,20 +1,50 @@
-version: '2'
 services:
-  php:
-    build: php
+  frontend:
+    build: ./frontend
     ports:
-    - "8180:80" # port where webpage will be accessible (8180)
-    - "8443:443"
+      - "3000:3000"
     volumes:
-    - ./php/www:/var/www/html
-    links:
-    - db
-  db:
-    image: mysql:5.7
-    volumes:
-    - /var/lib/mysql
+      - ./frontend:/app
+      - /app/node_modules  # Avoid overwriting node_modules
+    depends_on:
+      - backend
     environment:
-    - MYSQL_ROOT_PASSWORD=hunter2
-    - MYSQL_DATABASE=database
+      - CHOKIDAR_USEPOLLING=true  # Helps with live reloading in some environments
+
+  backend:
+    build: ./backend
     ports:
-    - "33060:3306" # maps container's 3306 to host's 33060 (to access via MySql workbench)
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - pycache:/app/__pycache__
+    depends_on:
+      - mysql
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - DATABASE_URL=mysql+pymysql://user:password@mysql/dbname
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: hunter2
+      MYSQL_DATABASE: database
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "33061:3306"
+  
+  apache:
+    image: httpd:latest
+    container_name: teachmeumb-apache
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf  # Make sure the left side is a FILE
+
+volumes:
+  mysql-data:
+  pycache:
+    driver: local
