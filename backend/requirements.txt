@@ -1,4 +1,4 @@
 flask-Cors
-Flask
 Flask-SQLAlchemy
+Flask
 mysql-connector-python # Required for MySQL connection
