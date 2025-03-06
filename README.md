@@ -6,7 +6,7 @@
 - [Set Up Local Environment](https://github.com/dimarcode/TeachMeUMB/new/main?filename=README.md#set-up-local-environment)
 	- [Prerequisites](https://github.com/dimarcode/TeachMeUMB/new/main?filename=README.md#prerequisites)
 	- [Directions](https://github.com/dimarcode/TeachMeUMB/new/main?filename=README.md#directions)
-- [Next Steps](https://github.com/dimarcode/TeachMeUMB/new/main?filename=README.md#next-steps)
+
 # Resources:
 
 Github Repo: [https://github.com/dimarcode/TeachMeUMB](https://github.com/dimarcode/TeachMeUMB)
@@ -79,25 +79,3 @@ HTML Forms: [https://www.w3schools.com/html/html_forms.asp](https://www.w3school
     2. [http://localhost:5000/db-test](http://localhost:5000/db-test)“ and see “Object of type Row is not JSON serializable" - this means the back end is working, and your front end can talk to the MySQL database running in the other container
         
 8. If there are any issues, please let me know ASAP ![(smile)](https://umb-capstone.atlassian.net/wiki/s/2089941738/6452/9284258a473d8a1043657188f7dc7de0057f64a0/_/images/icons/emoticons/smile.png "(smile)")
-    
-## NEXT:
-
-Watch this video:
-
-[https://www.youtube.com/watch?v=PppslXOR7TA&list=PL91V7rFux1JlBhO6RZ0WtK-pDcDRL-R0K&index=12](https://www.youtube.com/watch?v=PppslXOR7TA&list=PL91V7rFux1JlBhO6RZ0WtK-pDcDRL-R0K&index=12)
-
-- This is a basic template for a CRUD app, I just adapted his framework to include MySQL instead of SQLite.
-    
-- CRUD is an acronym that describes the ways a system can interact with data in a database:
-    
-
-1. **C**reate
-    
-2. **R**equest
-    
-3. **U**pdate
-    
-4. **D**elete
-    
-
-Which is basically what we need to do for the basic functionality of our app. He used React (a javascript framework) for the front-end, and Flask (an API framework for talking to databases) for the backend (links to the websites for both at the beginning of this doc). Watch the video and then decide if this seems doable. He describes what’s happening pretty well as he goes. I only wrote enough code to do a test to see if it’s working.
