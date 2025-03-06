@@ -1,3 +1,8 @@
+# Directories #
+###############
+backend/__pycache__/
+frontend/node_modules/
+
 # Environment #
 ###############
 *.env.local
