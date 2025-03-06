@@ -1,4 +1,6 @@
-flask-Cors
-Flask-SQLAlchemy
 Flask
+Flask-Cors
+Flask-SQLAlchemy
+Flask-WTF
+Flask-Migrate
 mysql-connector-python # Required for MySQL connection
