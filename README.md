@@ -9,8 +9,6 @@
 
 # Resources:
 
-Github Repo: [https://github.com/dimarcode/TeachMeUMB](https://github.com/dimarcode/TeachMeUMB)
-
 Flask: [https://flask.palletsprojects.com/en/stable/](https://flask.palletsprojects.com/en/stable/)
 
 React: [https://react.dev/](https://react.dev/)
