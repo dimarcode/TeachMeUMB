@@ -1,50 +1,45 @@
 services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules  # Avoid overwriting node_modules
-    depends_on:
-      - backend
-    environment:
-      - CHOKIDAR_USEPOLLING=true  # Helps with live reloading in some environments
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules  # Avoid overwriting node_modules
+  #   depends_on:
+  #     - backend
+  #   environment:
+  #     - CHOKIDAR_USEPOLLING=true  # Helps with live reloading in some environments
 
   backend:
-    build: ./backend
+    build: ./project
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
-      - ./backend:/app
-      - pycache:/app/__pycache__
-    depends_on:
-      - mysql
+      - ./project:/app
     environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=development
-      - DATABASE_URL=mysql+pymysql://user:password@mysql/dbname
+      - FLASK_APP=teachmeumb.py
+      - FLASK_DEBUG=1
 
-  mysql:
-    image: mysql:8.0
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: hunter2
-      MYSQL_DATABASE: database
-    volumes:
-      - mysql-data:/var/lib/mysql
-    ports:
-      - "33061:3306"
+#   mysql:
+#     image: mysql:8.0
+#     restart: always
+#     environment:
+#       MYSQL_ROOT_PASSWORD: hunter2
+#       MYSQL_DATABASE: database
+#     volumes:
+#       - mysql-data:/var/lib/mysql
+#     ports:
+#       - "33061:3306"
   
-  apache:
-    image: httpd:latest
-    container_name: teachmeumb-apache
-    ports:
-      - "8080:80"
-    volumes:
-      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf  # Make sure the left side is a FILE
+#   apache:
+#     image: httpd:latest
+#     container_name: teachmeumb-apache
+#     ports:
+#       - "8080:80"
+#     volumes:
+#       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf  # Make sure the left side is a FILE
 
 volumes:
-  mysql-data:
   pycache:
     driver: local
