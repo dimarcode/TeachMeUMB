@@ -6,40 +6,39 @@ import sqlalchemy.orm as so
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
+from enum import Enum
 
+# followers = sa.Table(
+#     'followers',
+#     db.metadata,
+#     sa.Column('follower_id', sa.Integer, sa.ForeignKey('user.id'),
+#               primary_key=True),
+#     sa.Column('followed_id', sa.Integer, sa.ForeignKey('user.id'),
+#               primary_key=True)
+# )
 
-followers = sa.Table(
-    'followers',
-    db.metadata,
-    sa.Column('follower_id', sa.Integer, sa.ForeignKey('user.id'),
-              primary_key=True),
-    sa.Column('followed_id', sa.Integer, sa.ForeignKey('user.id'),
-              primary_key=True)
-)
+class UserRole(Enum):
+    STUDENT = "student"
+    TUTOR = "tutor"
 
+# I may have to add columns for first name and last name later
 class User(UserMixin, db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     username: so.Mapped[str] = so.mapped_column(sa.String(64), index=True,
                                                 unique=True)
+
+# add system for verifying umb email
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True,
                                              unique=True)
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
+    
     about_me: so.Mapped[Optional[str]] = so.mapped_column(sa.String(140))
     last_seen: so.Mapped[Optional[datetime]] = so.mapped_column(
         default=lambda: datetime.now(timezone.utc))
-
-    posts: so.WriteOnlyMapped['Post'] = so.relationship(
-        back_populates='author')
-    following: so.WriteOnlyMapped['User'] = so.relationship(
-        secondary=followers, primaryjoin=(followers.c.follower_id == id),
-        secondaryjoin=(followers.c.followed_id == id),
-        back_populates='followers')
-    followers: so.WriteOnlyMapped['User'] = so.relationship(
-        secondary=followers, primaryjoin=(followers.c.followed_id == id),
-        secondaryjoin=(followers.c.follower_id == id),
-        back_populates='following')
-
-# user note
+    umb_id: so.Mapped[str] = so.mapped_column(
+        sa.String(8), unique=True)
+    role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
+                                                 default=UserRole.STUDENT)
     def __repr__(self):
         return '<User {}>'.format(self.username)
 
@@ -53,101 +52,87 @@ class User(UserMixin, db.Model):
         digest = md5(self.email.lower().encode('utf-8')).hexdigest()
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
 
-    def follow(self, user):
-        if not self.is_following(user):
-            self.following.add(user)
 
-    def unfollow(self, user):
-        if self.is_following(user):
-            self.following.remove(user)
-
-    def is_following(self, user):
-        query = self.following.select().where(User.id == user.id)
-        return db.session.scalar(query) is not None
-
-    def followers_count(self):
-        query = sa.select(sa.func.count()).select_from(
-            self.followers.select().subquery())
-        return db.session.scalar(query)
-
-    def following_count(self):
-        query = sa.select(sa.func.count()).select_from(
-            self.following.select().subquery())
-        return db.session.scalar(query)
-
-    def following_posts(self):
-        Author = so.aliased(User)
-        Follower = so.aliased(User)
-        return (
-            sa.select(Post)
-            .join(Post.author.of_type(Author))
-            .join(Author.followers.of_type(Follower), isouter=True)
-            .where(sa.or_(
-                Follower.id == self.id,
-                Author.id == self.id,
-            ))
-            .group_by(Post)
-            .order_by(Post.timestamp.desc())
-        )
-
-
-class Post(db.Model):
-    id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    body: so.Mapped[str] = so.mapped_column(sa.String(140))
-    timestamp: so.Mapped[datetime] = so.mapped_column(
-        index=True, default=lambda: datetime.now(timezone.utc))
-    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
-                                               index=True)
-
-    author: so.Mapped[User] = so.relationship(back_populates='posts')
-
-    def __repr__(self):
-        return '<Post {}>'.format(self.body)
-
-
-class Customer(db.Model):
-    id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    first_name: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
-    last_name: so.Mapped[str] = so.mapped_column(sa.String(64), index=True, nullable=False)
-    address: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
-    city: so.Mapped[Optional[str]] = so.mapped_column(sa.String(64))
-    state: so.Mapped[Optional[str]] = so.mapped_column(sa.String(2))
-    zip: so.Mapped[Optional[str]] = so.mapped_column(sa.String(10))
-    phone: so.Mapped[Optional[str]] = so.mapped_column(sa.String(20))
-    email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True, nullable=False)
-
-    orders: so.Mapped[list['Order']] = so.relationship('Order', back_populates="customer")
-
-    def __repr__(self):
-        return '<Customer {}>'.format(self.email)
-    
-
-class Item(db.Model):
-    id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    item_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
-    price: so.Mapped[float] = so.mapped_column(sa.Numeric(10, 2), nullable=False)
-
-    def __repr__(self):
-        return f"<Item {self.item_name} - ${self.price}>"
+class Subject(db.Model):
+     id:so.Mapped[int] = so.mapped_column(primary_key=True)
+     name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+     topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
 
 @login.user_loader
 def load_user(id):
     return db.session.get(User, int(id))
 
 
-class Order(db.Model):
-    order_id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    customer_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('customer.id'), nullable=False)
-    order_number: so.Mapped[int] = so.mapped_column(nullable=False, unique=True)
-    date: so.Mapped[datetime] = so.mapped_column(
-        index=True, default=lambda: datetime.now(timezone.utc))
-    customer: so.Mapped['Customer'] = so.relationship(back_populates="orders")
- #    order_items: so.Mapped[list['OrderLineItem']] = so.relationship(back_populates="order", cascade="all, delete-orphan")
+    # posts: so.WriteOnlyMapped['Post'] = so.relationship(
+    #     back_populates='author')
+    # following: so.WriteOnlyMapped['User'] = so.relationship(
+    #     secondary=followers, primaryjoin=(followers.c.follower_id == id),
+    #     secondaryjoin=(followers.c.followed_id == id),
+    #     back_populates='followers')
+    # followers: so.WriteOnlyMapped['User'] = so.relationship(
+    #     secondary=followers, primaryjoin=(followers.c.followed_id == id),
+    #     secondaryjoin=(followers.c.follower_id == id),
+    #     back_populates='following')
 
-    def __repr__(self):
-        return f"<Order {self.order_number} - Customer {self.customer_id}>"
+# user note
+    
+
+    # def follow(self, user):
+    #     if not self.is_following(user):
+    #         self.following.add(user)
+
+    # def unfollow(self, user):
+    #     if self.is_following(user):
+    #         self.following.remove(user)
+
+    # def is_following(self, user):
+    #     query = self.following.select().where(User.id == user.id)
+    #     return db.session.scalar(query) is not None
+
+    # def followers_count(self):
+    #     query = sa.select(sa.func.count()).select_from(
+    #         self.followers.select().subquery())
+    #     return db.session.scalar(query)
+
+    # def following_count(self):
+    #     query = sa.select(sa.func.count()).select_from(
+    #         self.following.select().subquery())
+    #     return db.session.scalar(query)
+
+    # def following_posts(self):
+    #     Author = so.aliased(User)
+    #     Follower = so.aliased(User)
+    #     return (
+    #         sa.select(Post)
+    #         .join(Post.author.of_type(Author))
+    #         .join(Author.followers.of_type(Follower), isouter=True)
+    #         .where(sa.or_(
+    #             Follower.id == self.id,
+    #             Author.id == self.id,
+    #         ))
+    #         .group_by(Post)
+    #         .order_by(Post.timestamp.desc())
+    #     )
 
 
+# class Post(db.Model):
+#     id: so.Mapped[int] = so.mapped_column(primary_key=True)
+#     body: so.Mapped[str] = so.mapped_column(sa.String(140))
+#     timestamp: so.Mapped[datetime] = so.mapped_column(
+#         index=True, default=lambda: datetime.now(timezone.utc))
+#     user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
+#                                                index=True)
+
+#     author: so.Mapped[User] = so.relationship(back_populates='posts')
+
+#     def __repr__(self):
+#         return '<Post {}>'.format(self.body)
+
+
+class Item(db.Model):
+        id: so.Mapped[int] = so.mapped_column(primary_key=True)
+        item_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
+        price: so.Mapped[float] = so.mapped_column(sa.Numeric(10, 2), nullable=False)
 
 # Orders and line items ---------------------------------------------------------------------------------------------------
 

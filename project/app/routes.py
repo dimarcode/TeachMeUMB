@@ -3,10 +3,9 @@ from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
-from sqlalchemy.sql.functions import coalesce
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, AddCustomerForm
-from app.models import User, Post, Customer, Item, Order
+from app.forms import LoginForm, RegistrationForm, EditProfileForm
+from app.models import User, UserRole
 
 
 @app.before_request
@@ -20,23 +19,8 @@ def before_request():
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
-    form = PostForm()
-    if form.validate_on_submit():
-        post = Post(body=form.post.data, author=current_user)
-        db.session.add(post)
-        db.session.commit()
-        flash('Your post is now live!')
-        return redirect(url_for('index'))
-    page = request.args.get('page', 1, type=int)
-    posts = db.paginate(current_user.following_posts(), page=page,
-                        per_page=app.config['POSTS_PER_PAGE'], error_out=False)
-    next_url = url_for('index', page=posts.next_num) \
-        if posts.has_next else None
-    prev_url = url_for('index', page=posts.prev_num) \
-        if posts.has_prev else None
-    return render_template('index.html', title='Home', form=form,
-                           posts=posts.items, next_url=next_url,
-                           prev_url=prev_url)
+    
+    return render_template('index.html', title='Home')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -70,7 +54,11 @@ def register():
         return redirect(url_for('index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data)
+        role_value = form.role.data  # This will be "STUDENT" or "TUTOR" if you used the code above
+        user = User(username=form.username.data,
+                   email=form.email.data,
+                   umb_id=form.umb_id.data,
+                   role=UserRole(role_value))
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
@@ -83,19 +71,7 @@ def register():
 @login_required
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
-    page = request.args.get('page', 1, type=int)
-    query = user.posts.select().order_by(Post.timestamp.desc())
-    posts = db.paginate(query, page=page,
-                        per_page=app.config['POSTS_PER_PAGE'],
-                        error_out=False)
-    next_url = url_for('user', username=user.username, page=posts.next_num) \
-        if posts.has_next else None
-    prev_url = url_for('user', username=user.username, page=posts.prev_num) \
-        if posts.has_prev else None
-    form = EmptyForm()
-    return render_template('user.html', user=user, posts=posts.items,
-                           next_url=next_url, prev_url=prev_url, form=form)
-
+    return render_template('user.html', user=user)
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
@@ -114,94 +90,94 @@ def edit_profile():
                            form=form)
 
 
-@app.route('/follow/<username>', methods=['POST'])
-@login_required
-def follow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user = db.session.scalar(
-            sa.select(User).where(User.username == username))
-        if user is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user == current_user:
-            flash('You cannot follow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.follow(user)
-        db.session.commit()
-        flash(f'You are following {username}!')
-        return redirect(url_for('user', username=username))
-    else:
-        return redirect(url_for('index'))
+# @app.route('/follow/<username>', methods=['POST'])
+# @login_required
+# def follow(username):
+#     form = EmptyForm()
+#     if form.validate_on_submit():
+#         user = db.session.scalar(
+#             sa.select(User).where(User.username == username))
+#         if user is None:
+#             flash(f'User {username} not found.')
+#             return redirect(url_for('index'))
+#         if user == current_user:
+#             flash('You cannot follow yourself!')
+#             return redirect(url_for('user', username=username))
+#         current_user.follow(user)
+#         db.session.commit()
+#         flash(f'You are following {username}!')
+#         return redirect(url_for('user', username=username))
+#     else:
+#         return redirect(url_for('index'))
 
 
-@app.route('/unfollow/<username>', methods=['POST'])
-@login_required
-def unfollow(username):
-    form = EmptyForm()
-    if form.validate_on_submit():
-        user = db.session.scalar(
-            sa.select(User).where(User.username == username))
-        if user is None:
-            flash(f'User {username} not found.')
-            return redirect(url_for('index'))
-        if user == current_user:
-            flash('You cannot unfollow yourself!')
-            return redirect(url_for('user', username=username))
-        current_user.unfollow(user)
-        db.session.commit()
-        flash(f'You are not following {username}.')
-        return redirect(url_for('user', username=username))
-    else:
-        return redirect(url_for('index'))
+# @app.route('/unfollow/<username>', methods=['POST'])
+# @login_required
+# def unfollow(username):
+#     form = EmptyForm()
+#     if form.validate_on_submit():
+#         user = db.session.scalar(
+#             sa.select(User).where(User.username == username))
+#         if user is None:
+#             flash(f'User {username} not found.')
+#             return redirect(url_for('index'))
+#         if user == current_user:
+#             flash('You cannot unfollow yourself!')
+#             return redirect(url_for('user', username=username))
+#         current_user.unfollow(user)
+#         db.session.commit()
+#         flash(f'You are not following {username}.')
+#         return redirect(url_for('user', username=username))
+#     else:
+#         return redirect(url_for('index'))
     
 
-@app.route('/explore')
-@login_required
-def explore():
-    page = request.args.get('page', 1, type=int)
-    query = sa.select(Post).order_by(Post.timestamp.desc())
-    posts = db.paginate(query, page=page,
-                        per_page=app.config['POSTS_PER_PAGE'], error_out=False)
-    next_url = url_for('explore', page=posts.next_num) \
-        if posts.has_next else None
-    prev_url = url_for('explore', page=posts.prev_num) \
-        if posts.has_prev else None
-    return render_template('index.html', title='Explore', posts=posts.items,
-                           next_url=next_url, prev_url=prev_url)
+# @app.route('/explore')
+# @login_required
+# def explore():
+#     page = request.args.get('page', 1, type=int)
+#     query = sa.select(Post).order_by(Post.timestamp.desc())
+#     posts = db.paginate(query, page=page,
+#                         per_page=app.config['POSTS_PER_PAGE'], error_out=False)
+#     next_url = url_for('explore', page=posts.next_num) \
+#         if posts.has_next else None
+#     prev_url = url_for('explore', page=posts.prev_num) \
+#         if posts.has_prev else None
+#     return render_template('index.html', title='Explore', posts=posts.items,
+#                            next_url=next_url, prev_url=prev_url)
 
 
-@app.route('/customers', methods=['GET', 'POST'])
-@login_required
-def customers():
+# @app.route('/customers', methods=['GET', 'POST'])
+# @login_required
+# def customers():
     
-    customers = Customer.query.order_by(Customer.last_name.collate("NOCASE")).all()
-    return render_template('customers.html', title='Customers', customers=customers)
+#     customers = Customer.query.order_by(Customer.last_name.collate("NOCASE")).all()
+#     return render_template('customers.html', title='Customers', customers=customers)
 
 
-@app.route('/add_customer', methods=['GET', 'POST'])
-@login_required
-def add_customer():
-    form = AddCustomerForm()
-    if form.validate_on_submit():
-        new_customer = Customer(first_name=form.first_name.data, last_name=form.last_name.data, address=form.address.data, 
-                            city=form.city.data, state=form.state.data, zip=form.zip.data, phone=form.phone.data,  email=form.email.data)
-        db.session.add(new_customer)
-        db.session.commit()
-        flash('New customer added!')
-        return redirect(url_for('customers'))
-    return render_template('add_customer.html', title='Add Customer', form=form)
+# @app.route('/add_customer', methods=['GET', 'POST'])
+# @login_required
+# def add_customer():
+#     form = AddCustomerForm()
+#     if form.validate_on_submit():
+#         new_customer = Customer(first_name=form.first_name.data, last_name=form.last_name.data, address=form.address.data, 
+#                             city=form.city.data, state=form.state.data, zip=form.zip.data, phone=form.phone.data,  email=form.email.data)
+#         db.session.add(new_customer)
+#         db.session.commit()
+#         flash('New customer added!')
+#         return redirect(url_for('customers'))
+#     return render_template('add_customer.html', title='Add Customer', form=form)
 
 
-@app.route('/items', methods=['GET', 'POST'])
-@login_required
-def items():
-    items = Item.query.order_by(Item.item_name.collate("NOCASE")).all()
-    return render_template('items.html', title='Items', items=items)
+# @app.route('/items', methods=['GET', 'POST'])
+# @login_required
+# def items():
+#     items = Item.query.order_by(Item.item_name.collate("NOCASE")).all()
+#     return render_template('items.html', title='Items', items=items)
 
 
-@app.route('/orders', methods=['Get', 'POST'])
-@login_required
-def orders():
-    orders = Order.query.order_by(Order.date).all()
-    return render_template('orders.html', title='Orders', orders=orders)
+# @app.route('/orders', methods=['Get', 'POST'])
+# @login_required
+# def orders():
+#     orders = Order.query.order_by(Order.date).all()
+#     return render_template('orders.html', title='Orders', orders=orders)

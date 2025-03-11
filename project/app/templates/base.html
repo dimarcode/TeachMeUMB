@@ -11,10 +11,6 @@
         <div>
             Microblog:
             <a href="{{ url_for('index') }}">Home</a>
-            <a href="{{ url_for('explore') }}">Explore</a>
-            <a href="{{ url_for('customers') }}">Customers</a>
-            <a href="{{ url_for('items') }}">Items</a>
-            <a href="{{ url_for('orders') }}">Orders</a>
             {% if current_user.is_anonymous %}
             <a href="{{ url_for('login') }}">Login</a>
             {% else %}
