@@ -17,6 +17,12 @@ from enum import Enum
 #               primary_key=True)
 # )
 
+user_subjects = db.Table(
+    "user_subjects",
+    sa.Column("user_id", sa.Integer, sa.ForeignKey("user.id")),
+    sa.Column("subject_id", sa.Integer, sa.ForeignKey("subject.id")),
+)
+
 class UserRole(Enum):
     STUDENT = "student"
     TUTOR = "tutor"
@@ -39,6 +45,10 @@ class User(UserMixin, db.Model):
         sa.String(8), unique=True)
     role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
                                                  default=UserRole.STUDENT)
+    
+    following = so.relationship("Subject", secondary=user_subjects, backref="followers")
+
+
     def __repr__(self):
         return '<User {}>'.format(self.username)
 
@@ -57,6 +67,7 @@ class Subject(db.Model):
      id:so.Mapped[int] = so.mapped_column(primary_key=True)
      name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
      topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+
 
 @login.user_loader
 def load_user(id):

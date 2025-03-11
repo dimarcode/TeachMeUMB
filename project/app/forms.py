@@ -1,11 +1,12 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
-    TextAreaField, SelectField
+    TextAreaField, SelectField, FormField, FieldList
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Regexp
 import sqlalchemy as sa
 from app import db
-from app.models import User, UserRole
+from app.models import User, UserRole 
+# , Subject
 
 
 class LoginForm(FlaskForm):
@@ -22,7 +23,7 @@ class RegistrationForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired()])
     password2 = PasswordField(
         'Repeat Password', validators=[DataRequired(), EqualTo('password')])
-    
+    # allows the user to choose if they are a student or tutor
     role = SelectField('Student or Tutor?', 
                        choices=[
                            (UserRole.STUDENT.value, "Student"), 
@@ -51,7 +52,30 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('Please use a different email address.')
 
 
+# class SubjectForm(FlaskForm):
+
+
+    
+# class AddSubjectForm(FlaskForm):
+#     subject_list = []
+#     id = SelectField('Subject', choices=[])
+      
+
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     about_me = TextAreaField('About me', validators=[Length(min=0, max=140)])
     submit = SubmitField('Submit')
+
+
+#     class SubjectSelectForm(FlaskForm):
+#     # This is a subform for each subject selection
+#     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    
+#     # Disable CSRF for subforms to avoid conflicts with the parent form
+#     class Meta:
+#         csrf = False
+
+# class SubjectListForm(FlaskForm):
+#     # This will hold the list of subject selections
+#     subjects = FieldList(FormField(SubjectSelectForm), min_entries=1)
+#     submit = SubmitField('Submit')

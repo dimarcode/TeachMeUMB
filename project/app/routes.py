@@ -5,7 +5,8 @@ from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm
-from app.models import User, UserRole
+# SubjectListForm, SubjectSelectForm
+from app.models import User, UserRole, Subject
 
 
 @app.before_request
@@ -90,6 +91,58 @@ def edit_profile():
                            form=form)
 
 
+@app.route('/subjects', methods=['GET', 'POST'])
+@login_required
+def subjects():
+    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
+    return render_template('subjects.html', title='Subjects', subjects=subjects)
+
+
+# @app.route('/add_classes', methods=['GET', 'POST'])
+# @login_required
+# def get_choices():
+#     subject_list=[]
+#     subjects = Subject.query.all()
+#     for subject in subjects:
+#         tup = (subject.name)
+#         subject_list.append(tup)
+#         return subject_list
+
+# @app.route('/select_classes', methods=['GET', 'POST'])
+# @login_required  # Ensure the user is logged in
+# def select_classes():
+#     # Create the form
+#     form = SubjectListForm()
+    
+#     # Get all subjects for JS functionality
+#     subjects = Subject.query.all()
+#     subject_choices = [(s.id, f"{s.name} ({s.topic})") for s in subjects]
+    
+#     if form.validate_on_submit():
+#         # Get the selected subject IDs
+#         selected_subject_ids = [subform.subject.data for subform in form.subjects]
+#         # Fetch the actual Subject objects
+#         selected_subjects = Subject.query.filter(Subject.id.in_(selected_subject_ids)).all()
+#         # Clear existing subjects and set the new ones
+#         current_user.subjects = selected_subjects
+#         # Commit changes to the database
+#         db.session.commit()
+#         flash('Your classes have been successfully selected!')
+#         return redirect(url_for('index'))
+        
+#     # For GET requests, populate form with user's existing subjects if any
+#     elif request.method == 'GET' and current_user.subjects:
+#         # Clear existing form entries and add one for each of user's subjects
+#         form.subjects.entries = []
+#         for subject in current_user.subjects:
+#             # Create a new entry for each subject
+#             form.subjects.append_entry({'subject': subject.id})
+    
+#     return render_template('select_classes.html', 
+#                            title='Select Classes', 
+#                            form=form, 
+#                            subject_choices=subject_choices)
+
 # @app.route('/follow/<username>', methods=['POST'])
 # @login_required
 # def follow(username):
@@ -167,13 +220,6 @@ def edit_profile():
 #         flash('New customer added!')
 #         return redirect(url_for('customers'))
 #     return render_template('add_customer.html', title='Add Customer', form=form)
-
-
-# @app.route('/items', methods=['GET', 'POST'])
-# @login_required
-# def items():
-#     items = Item.query.order_by(Item.item_name.collate("NOCASE")).all()
-#     return render_template('items.html', title='Items', items=items)
 
 
 # @app.route('/orders', methods=['Get', 'POST'])

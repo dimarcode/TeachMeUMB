@@ -1,0 +1,100 @@
+<!-- {% extends "base.html" %}
+
+{% block content %}
+    <h1>Select Classes</h1>
+    <form action="" method="post" novalidate>
+        {{ form.hidden_tag() }}
+        
+        <div id="subjects-container">
+            {% for subform in form.subjects %}
+                <div class="subject-field">
+                    {{ subform.subject.label }} {{ subform.subject(class="form-control") }}
+                    {% if not loop.first or current_user.subjects|length > 1 %}
+                        <button type="button" class="remove-btn">Remove</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <button type="button" id="add-subject-btn">Add a Class</button>
+        <p>{{ form.submit(class="btn btn-primary") }}</p>
+    </form>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const subjectChoices = ( subject_choices | tojson )
+            document.getElementById('add-subject-btn').addEventListener('click', function() {
+                const container = document.getElementById('subjects-container');
+                const fieldCount = container.children.length;
+            }
+        });
+            // Subject choices from server
+            
+            // Add button functionality
+            
+                
+                // Create a new field div
+                
+                
+                // Create label
+                const label = document.createElement('label');
+                label.textContent = 'Subject ';
+                label.setAttribute('for', `subjects-${fieldCount}-subject`);
+                
+                // Create select
+                const select = document.createElement('select');
+                select.className = 'form-control';
+                select.id = `subjects-${fieldCount}-subject`;
+                select.name = `subjects-${fieldCount}-subject`;
+                
+                // Add options
+                subjectChoices.forEach(choice => {
+                    const option = document.createElement('option');
+                    option.value = choice[0];
+                    option.textContent = choice[1];
+                    select.appendChild(option);
+                });
+                
+                // Create remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = 'Remove';
+                removeBtn.addEventListener('click', function() {
+                    container.removeChild(newField);
+                    // Update indices for remaining fields
+                    updateFieldIndices();
+                });
+                
+                // Append elements
+                newField.appendChild(label);
+                newField.appendChild(select);
+                newField.appendChild(removeBtn);
+                container.appendChild(newField);
+                
+                // Update all indices
+                updateFieldIndices();
+            });
+            
+            // Add remove functionality to existing buttons
+            document.querySelectorAll('.remove-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.closest('.subject-field').remove();
+                    updateFieldIndices();
+                });
+            });
+            
+            // Function to update indices in field names
+            function updateFieldIndices() {
+                const fields = document.querySelectorAll('.subject-field');
+                fields.forEach((field, index) => {
+                    const select = field.querySelector('select');
+                    select.id = `subjects-${index}-subject`;
+                    select.name = `subjects-${index}-subject`;
+                    
+                    const label = field.querySelector('label');
+                    label.setAttribute('for', `subjects-${index}-subject`);
+                });
+            }};
+    </script>
+{% endblock %} -->

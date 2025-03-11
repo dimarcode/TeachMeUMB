@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Items</h1>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Subject Name</th>
+                <th>Topic</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            <tr>
+                <td>{{ subject.id }}</td>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.topic }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <!-- Debug information -->
+    <div style="margin-top: 30px; padding: 10px; background-color: #f8f9fa;">
+        <h3>Debug Information:</h3>
+        {% for subject in subjects %}
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+                <p><strong>Subject #{{ subject.id }}</strong></p>
+                <ul>
+                    <li>Subject Name: {{ subject.name|default('None', true) }}</li>
+                    <li>Topic: {{ subject.topic|default('None', true) }}</li>
+                </ul>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
