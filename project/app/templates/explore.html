@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    {% if tutors %}
+    <div class="mt-5">
+        <h2>Available Tutors</h2>
+        <p>These tutors are enrolled in subjects you're taking:</p>
+        <div class="row">
+            {% for tutor in tutors %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ tutor.username }}</h5>
+                        <p class="card-text">
+                            <strong>Shared subjects:</strong><br>
+                            {% for subject in tutor.my_subjects %}
+                                {% if subject in current_user.my_subjects %}
+                                <span class="badge bg-primary">{{ subject.name }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </p>
+                        <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-sm btn-outline-primary">View Profile</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if tutors_by_subject %}
+    <div class="mt-5">
+        <h2>Tutors By Subject</h2>
+        <div class="accordion" id="tutorAccordion">
+            {% for subject, subject_tutors in tutors_by_subject.items() %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ subject.id }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapse{{ subject.id }}" aria-expanded="false" 
+                            aria-controls="collapse{{ subject.id }}">
+                        {{ subject.name }} - {{ subject.topic }} ({{ subject_tutors|length }} tutors)
+                    </button>
+                </h2>
+                <div id="collapse{{ subject.id }}" class="accordion-collapse collapse" 
+                    aria-labelledby="heading{{ subject.id }}" data-bs-parent="#tutorAccordion">
+                    <div class="accordion-body">
+                        <div class="row">
+                            {% for tutor in subject_tutors %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ tutor.username }}</h5>
+                                        <p class="card-text">
+                                            {% if tutor.about_me %}
+                                                {{ tutor.about_me }}
+                                            {% else %}
+                                                No additional information available.
+                                            {% endif %}
+                                        </p>
+                                        <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-sm btn-outline-primary">View Profile</a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}

@@ -5,7 +5,7 @@ from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
     Length, Regexp
 import sqlalchemy as sa
 from app import db
-from app.models import User, UserRole 
+from app.models import User, UserRole, Subject
 # , Subject
 
 
@@ -58,3 +58,11 @@ class EditProfileForm(FlaskForm):
     about_me = TextAreaField('About me', validators=[Length(min=0, max=140)])
     submit = SubmitField('Submit')
 
+class UserSubjectForm(FlaskForm):
+    subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Add Subject')
+    
+    def __init__(self, *args, **kwargs):
+        super(UserSubjectForm, self).__init__(*args, **kwargs)
+        self.subject.choices = [(s.id, f"{s.name} - {s.topic}") for s in Subject.query.order_by(Subject.name).all()]
+    

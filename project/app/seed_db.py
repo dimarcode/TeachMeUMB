@@ -63,3 +63,5 @@ def import_subjects_data():
             print(f"Error reading {data_file}: {e}")
             import traceback
             traceback.print_exc()
+
+

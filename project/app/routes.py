@@ -4,7 +4,7 @@ from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm
 # SubjectListForm, SubjectSelectForm
 from app.models import User, UserRole, Subject
 
@@ -101,6 +101,62 @@ def edit_profile():
 def subjects():
     subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
     return render_template('subjects.html', title='Subjects', subjects=subjects)
+
+
+@app.route('/add_subject', methods=['GET', 'POST'])
+@login_required
+def add_subject():
+    form = UserSubjectForm()
+    if form.validate_on_submit():
+        subject = Subject.query.get(form.subject.data)
+        if subject in current_user.my_subjects:
+            flash(f'You are already enrolled in {subject.name}', 'warning')
+        else:
+            current_user.my_subjects.append(subject)
+            db.session.commit()
+            flash(f'You have successfully enrolled in {subject.name}!', 'success')
+        return redirect(url_for('add_subject'))
+    
+    return render_template('add_subject.html', title='Add Subject', form=form)
+
+
+@app.route('/remove_subject/<int:subject_id>')
+@login_required
+def remove_subject(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    if subject in current_user.my_subjects:
+        current_user.my_subjects.remove(subject)
+        db.session.commit()
+        flash(f'You have successfully unenrolled from {subject.name}!', 'success')
+    else:
+        flash(f'You are not enrolled in {subject.name}', 'warning')
+    return redirect(url_for('add_subject'))
+
+@app.route('/explore')
+@login_required
+def explore():
+    # Find tutors who share subjects with the current user
+    tutors = User.query.filter(
+        User.role == UserRole.TUTOR,  # Filter for tutors
+        User.id != current_user.id,   # Exclude current user
+        User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
+    ).all()
+    
+    # Group tutors by subject
+    tutors_by_subject = {}
+    for subject in current_user.my_subjects:
+        subject_tutors = User.query.filter(
+            User.role == UserRole.TUTOR,
+            User.id != current_user.id,
+            User.my_subjects.contains(subject)
+        ).all()
+        if subject_tutors:
+            tutors_by_subject[subject] = subject_tutors
+    
+    return render_template('explore.html', 
+                          title='Explore', 
+                          tutors=tutors,
+                          tutors_by_subject=tutors_by_subject)
 
 # @app.route('/my_subjects', methods=['GET', 'POST'])
 # @login_required

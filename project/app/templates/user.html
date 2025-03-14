@@ -14,18 +14,19 @@
                 <p>Role: {{ user.role.value }}</p>
                 {% if user == current_user %}
                 <p><a href="{{ url_for('edit_profile') }}">Edit your profile</a></p>
+                <p><a href="{{ url_for('add_subject') }}">Manage your subjects</a></p>
+                {% if user.my_subjects %}
+                <p>Current subjects:</p>
+                <ul>
+                    {% for subject in user.my_subjects %}
+                    <li>{{ subject.name }} - {{ subject.topic }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>Not enrolled in any subjects yet.</p>
+                {% endif %}
                 {% endif %}
             </td>
-        </tr>
-        <tr valign="top">
-            <td>
-                <h1>My Classes</h1>
-            </td>
-        </tr>
-        <tr valign="top">
-            <td>Class ID</td>
-            <td>Class Code</td>
-            <td>Class Topic</td>
         </tr>
     </table>
 {% endblock %}
