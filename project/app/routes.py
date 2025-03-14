@@ -55,7 +55,7 @@ def register():
         return redirect(url_for('index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        role_value = form.role.data  # This will be "STUDENT" or "TUTOR" if you used the code above
+        role_value = form.role.data
         user = User(username=form.username.data,
                    email=form.email.data,
                    umb_id=form.umb_id.data,
@@ -72,7 +72,12 @@ def register():
 @login_required
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
-    return render_template('user.html', user=user)
+    # Query to fetch all subjects for the user
+    # subjects = db.session.execute(
+    #     sa.select(Subject).join(user_subjects).where(user_subjects.c.user_id == user.id)
+    # ).scalars().all()
+    
+    return render_template('user.html', user=user, subjects=subjects)
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
@@ -97,133 +102,47 @@ def subjects():
     subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
     return render_template('subjects.html', title='Subjects', subjects=subjects)
 
-
-# @app.route('/add_classes', methods=['GET', 'POST'])
+# @app.route('/my_subjects', methods=['GET', 'POST'])
 # @login_required
-# def get_choices():
-#     subject_list=[]
-#     subjects = Subject.query.all()
-#     for subject in subjects:
-#         tup = (subject.name)
-#         subject_list.append(tup)
-#         return subject_list
-
-# @app.route('/select_classes', methods=['GET', 'POST'])
-# @login_required  # Ensure the user is logged in
-# def select_classes():
-#     # Create the form
-#     form = SubjectListForm()
-    
-#     # Get all subjects for JS functionality
-#     subjects = Subject.query.all()
-#     subject_choices = [(s.id, f"{s.name} ({s.topic})") for s in subjects]
-    
+# def my_subjects():
+#     form = SubjectSelectForm()
 #     if form.validate_on_submit():
-#         # Get the selected subject IDs
-#         selected_subject_ids = [subform.subject.data for subform in form.subjects]
-#         # Fetch the actual Subject objects
-#         selected_subjects = Subject.query.filter(Subject.id.in_(selected_subject_ids)).all()
-#         # Clear existing subjects and set the new ones
-#         current_user.subjects = selected_subjects
-#         # Commit changes to the database
-#         db.session.commit()
-#         flash('Your classes have been successfully selected!')
-#         return redirect(url_for('index'))
+#         subject_name = form.subject_name.data
+#         subject = Subject.query.filter_by(name=subject_name).first()
         
-#     # For GET requests, populate form with user's existing subjects if any
-#     elif request.method == 'GET' and current_user.subjects:
-#         # Clear existing form entries and add one for each of user's subjects
-#         form.subjects.entries = []
-#         for subject in current_user.subjects:
-#             # Create a new entry for each subject
-#             form.subjects.append_entry({'subject': subject.id})
-    
-#     return render_template('select_classes.html', 
-#                            title='Select Classes', 
-#                            form=form, 
-#                            subject_choices=subject_choices)
-
-# @app.route('/follow/<username>', methods=['POST'])
-# @login_required
-# def follow(username):
-#     form = EmptyForm()
-#     if form.validate_on_submit():
-#         user = db.session.scalar(
-#             sa.select(User).where(User.username == username))
-#         if user is None:
-#             flash(f'User {username} not found.')
-#             return redirect(url_for('index'))
-#         if user == current_user:
-#             flash('You cannot follow yourself!')
-#             return redirect(url_for('user', username=username))
-#         current_user.follow(user)
+#         if not subject:
+#             flash('Subject not found.', 'danger')
+#             return redirect(url_for('my_subjects'))
+        
+#         if subject in current_user.my_subject:
+#             flash('You already have this subject in your list.', 'warning')
+#             return redirect(url_for('my_subjects'))
+        
+#         # Add the subject to the user's subjects
+#         current_user.my_subject.append(subject)
 #         db.session.commit()
-#         flash(f'You are following {username}!')
-#         return redirect(url_for('user', username=username))
+        
+#         flash(f'Subject "{subject.name}" added successfully.', 'success')
+#         return redirect(url_for('my_subjects'))
+    
+#     subjects = Subject.query.all()
+    
+#     # Render the template with the form, user's current subjects, and all available subjects
+#     return render_template('my_subjects.html', 
+#                           form=form,
+#                           user_subjects=current_user.my_subject,
+#                           subjects=subjects)
+
+# @app.route('/remove_subject/<int:subject_id>', methods=['POST'])
+# @login_required
+# def remove_subject(subject_id):
+#     subject = Subject.query.get_or_404(subject_id)
+    
+#     if subject in current_user.my_subject:
+#         current_user.my_subject.remove(subject)
+#         db.session.commit()
+#         flash(f'Subject "{subject.name}" removed successfully.', 'success')
 #     else:
-#         return redirect(url_for('index'))
-
-
-# @app.route('/unfollow/<username>', methods=['POST'])
-# @login_required
-# def unfollow(username):
-#     form = EmptyForm()
-#     if form.validate_on_submit():
-#         user = db.session.scalar(
-#             sa.select(User).where(User.username == username))
-#         if user is None:
-#             flash(f'User {username} not found.')
-#             return redirect(url_for('index'))
-#         if user == current_user:
-#             flash('You cannot unfollow yourself!')
-#             return redirect(url_for('user', username=username))
-#         current_user.unfollow(user)
-#         db.session.commit()
-#         flash(f'You are not following {username}.')
-#         return redirect(url_for('user', username=username))
-#     else:
-#         return redirect(url_for('index'))
-    
-
-# @app.route('/explore')
-# @login_required
-# def explore():
-#     page = request.args.get('page', 1, type=int)
-#     query = sa.select(Post).order_by(Post.timestamp.desc())
-#     posts = db.paginate(query, page=page,
-#                         per_page=app.config['POSTS_PER_PAGE'], error_out=False)
-#     next_url = url_for('explore', page=posts.next_num) \
-#         if posts.has_next else None
-#     prev_url = url_for('explore', page=posts.prev_num) \
-#         if posts.has_prev else None
-#     return render_template('index.html', title='Explore', posts=posts.items,
-#                            next_url=next_url, prev_url=prev_url)
-
-
-# @app.route('/customers', methods=['GET', 'POST'])
-# @login_required
-# def customers():
-    
-#     customers = Customer.query.order_by(Customer.last_name.collate("NOCASE")).all()
-#     return render_template('customers.html', title='Customers', customers=customers)
-
-
-# @app.route('/add_customer', methods=['GET', 'POST'])
-# @login_required
-# def add_customer():
-#     form = AddCustomerForm()
-#     if form.validate_on_submit():
-#         new_customer = Customer(first_name=form.first_name.data, last_name=form.last_name.data, address=form.address.data, 
-#                             city=form.city.data, state=form.state.data, zip=form.zip.data, phone=form.phone.data,  email=form.email.data)
-#         db.session.add(new_customer)
-#         db.session.commit()
-#         flash('New customer added!')
-#         return redirect(url_for('customers'))
-#     return render_template('add_customer.html', title='Add Customer', form=form)
-
-
-# @app.route('/orders', methods=['Get', 'POST'])
-# @login_required
-# def orders():
-#     orders = Order.query.order_by(Order.date).all()
-#     return render_template('orders.html', title='Orders', orders=orders)
+#         flash('Subject not found in your list.', 'danger')
+        
+#     return redirect(url_for('my_subjects'))

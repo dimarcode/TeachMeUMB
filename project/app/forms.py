@@ -15,6 +15,7 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('Sign In')
 
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     umb_id = StringField(
@@ -52,30 +53,8 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('Please use a different email address.')
 
 
-# class SubjectForm(FlaskForm):
-
-
-    
-# class AddSubjectForm(FlaskForm):
-#     subject_list = []
-#     id = SelectField('Subject', choices=[])
-      
-
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     about_me = TextAreaField('About me', validators=[Length(min=0, max=140)])
     submit = SubmitField('Submit')
 
-
-#     class SubjectSelectForm(FlaskForm):
-#     # This is a subform for each subject selection
-#     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
-    
-#     # Disable CSRF for subforms to avoid conflicts with the parent form
-#     class Meta:
-#         csrf = False
-
-# class SubjectListForm(FlaskForm):
-#     # This will hold the list of subject selections
-#     subjects = FieldList(FormField(SubjectSelectForm), min_entries=1)
-#     submit = SubmitField('Submit')
