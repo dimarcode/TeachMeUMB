@@ -14,9 +14,17 @@ user_subject = db.Table(
     sa.Column("subject_id", sa.Integer, sa.ForeignKey("subject.id")),
 )
 
+
 class UserRole(Enum):
     STUDENT = "student"
     TUTOR = "tutor"
+
+
+class Subject(db.Model):
+     id:so.Mapped[int] = so.mapped_column(primary_key=True)
+     name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+     topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+
 
 # I may have to add columns for first name and last name later
 class User(UserMixin, db.Model):
@@ -54,18 +62,6 @@ class User(UserMixin, db.Model):
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
 
 
-class Subject(db.Model):
-     id:so.Mapped[int] = so.mapped_column(primary_key=True)
-     name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
-     topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
-
-
 @login.user_loader
 def load_user(id):
     return db.session.get(User, int(id))
-
-
-class Item(db.Model):
-        id: so.Mapped[int] = so.mapped_column(primary_key=True)
-        item_name: so.Mapped[str] = so.mapped_column(sa.String(255), nullable=False)
-        price: so.Mapped[float] = so.mapped_column(sa.Numeric(10, 2), nullable=False)

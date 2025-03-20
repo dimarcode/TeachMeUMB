@@ -8,22 +8,8 @@
         <p>These tutors are enrolled in subjects you're taking:</p>
         <div class="row">
             {% for tutor in tutors %}
-            <div class="col-md-4 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ tutor.username }}</h5>
-                        <p class="card-text">
-                            <strong>Shared subjects:</strong><br>
-                            {% for subject in tutor.my_subjects %}
-                                {% if subject in current_user.my_subjects %}
-                                <span class="badge bg-primary">{{ subject.name }}</span>
-                                {% endif %}
-                            {% endfor %}
-                        </p>
-                        <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-sm btn-outline-primary">View Profile</a>
-                    </div>
-                </div>
-            </div>
+                {% include '_tutorcard.html' %}
+                {% include '_sharedsubject.html' %}
             {% endfor %}
         </div>
     </div>
@@ -47,21 +33,7 @@
                     <div class="accordion-body">
                         <div class="row">
                             {% for tutor in subject_tutors %}
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h5 class="card-title">{{ tutor.username }}</h5>
-                                        <p class="card-text">
-                                            {% if tutor.about_me %}
-                                                {{ tutor.about_me }}
-                                            {% else %}
-                                                No additional information available.
-                                            {% endif %}
-                                        </p>
-                                        <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-sm btn-outline-primary">View Profile</a>
-                                    </div>
-                                </div>
-                            </div>
+                                {% include '_tutorcard.html' %}
                             {% endfor %}
                         </div>
                     </div>

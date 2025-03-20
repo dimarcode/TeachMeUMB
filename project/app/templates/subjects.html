@@ -2,14 +2,15 @@
 
 {% block content %}
     
-    <h1>Items</h1>
-    
+    {% include '_currentclasses.html' %}
+
+    <h1>Classes</h1>
     <table class="table">
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Subject Name</th>
-                <th>Topic</th>
+                <th>Class Code</th>
+                <th>Class Name</th>
             </tr>
         </thead>
         <tbody>
@@ -22,17 +23,4 @@
             {% endfor %}
         </tbody>
     </table>
-    <!-- Debug information -->
-    <div style="margin-top: 30px; padding: 10px; background-color: #f8f9fa;">
-        <h3>Debug Information:</h3>
-        {% for subject in subjects %}
-            <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
-                <p><strong>Subject #{{ subject.id }}</strong></p>
-                <ul>
-                    <li>Subject Name: {{ subject.name|default('None', true) }}</li>
-                    <li>Topic: {{ subject.topic|default('None', true) }}</li>
-                </ul>
-            </div>
-        {% endfor %}
-    </div>
 {% endblock %}

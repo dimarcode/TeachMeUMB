@@ -1,0 +1,15 @@
+    <div class="mt-5">
+        <h2>Your Current Classes</h2>
+        {% if current_user.my_subjects %}
+            <ul class="list-group">
+                {% for subject in current_user.my_subjects %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ subject.name }} - {{ subject.topic }}
+                    <a href="{{ url_for('remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't enrolled in any subjects yet.</p>
+        {% endif %}
+    </div>

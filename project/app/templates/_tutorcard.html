@@ -1,0 +1,16 @@
+    
+    <table>
+        <tr>
+            <td><img src="{{ tutor.avatar(36) }}"></td>
+            <td><a href="{{ url_for('user', username=tutor.username) }}">
+                    <strong>{{ tutor.username }}<br></strong>
+                </a>
+                About {{ tutor.username }}:<br>
+                {% if tutor.about_me %}
+                    {{ tutor.about_me }}
+                {% else %}
+                    No additional information available.
+                {% endif %}
+            </td>
+        </tr>
+    </table>
