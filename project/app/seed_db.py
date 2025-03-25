@@ -39,7 +39,7 @@ def import_subjects_data():
                 for row in reader:
                     row_num += 1
                     if len(row) != 3:
-                        print(f"Row in customers.csv {row_num} has {len(row)} columns, expected 3: {row}")
+                        print(f"Row in classes.csv {row_num} has {len(row)} columns, expected 3: {row}")
                         continue
                     
                     try:
