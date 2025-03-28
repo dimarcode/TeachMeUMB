@@ -3,6 +3,8 @@ from hashlib import md5
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
+import datetime
+from sqlalchemy import Column, Integer, DateTime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db, login
@@ -26,13 +28,10 @@ class Subject(db.Model):
      topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
 
 
-# I may have to add columns for first name and last name later
 class User(UserMixin, db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     username: so.Mapped[str] = so.mapped_column(sa.String(64), index=True,
                                                 unique=True)
-
-# add system for verifying umb email
     email: so.Mapped[str] = so.mapped_column(sa.String(120), index=True,
                                              unique=True)
     password_hash: so.Mapped[Optional[str]] = so.mapped_column(sa.String(256))
@@ -45,8 +44,15 @@ class User(UserMixin, db.Model):
     role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
                                                  default=UserRole.STUDENT)
     
-    my_subjects = so.relationship("Subject", secondary=user_subject, backref="subject_user")
+    # defines relationship to user_subjects table, and therefore subjects table
+    my_subjects = so.relationship("Subject", secondary=user_subject, 
+                                  backref="subject_user")
 
+    # defines relationship to appointments table for users with either student or tutor role
+    student_appointments = db.relationship('Appointment', foreign_keys='Appointment.student_id', 
+                                           backref='student', lazy='dynamic')
+    tutor_appointments = db.relationship('Appointment', foreign_keys='Appointment.tutor_id', 
+                                         backref='tutor', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -60,6 +66,16 @@ class User(UserMixin, db.Model):
     def avatar(self, size):
         digest = md5(self.email.lower().encode('utf-8')).hexdigest()
         return f'https://www.gravatar.com/avatar/{digest}?d=identicon&s={size}'
+
+
+class Appointment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # When the appointment was created
+    booking_date = db.Column(db.Date, nullable=False)  # The user-selected date for the appointment
+    booking_time = db.Column(db.Time, nullable=False)  # The user-selected time for the appointment
+   # status = db.Column(db.String(20), default='pending')
 
 
 @login.user_loader
