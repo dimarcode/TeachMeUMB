@@ -5,7 +5,6 @@ from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm
-# SubjectListForm, SubjectSelectForm
 from app.models import User, UserRole, Subject, Appointment
 
 
@@ -172,21 +171,29 @@ def book_appointment():
     print(request.form.to_dict())  # Debugging: See incoming data
 
     tutor_id = request.form.getlist('tutor_id')[-1]  # Ensure we get a valid tutor_id
+    subject_id = request.form.get('subject_id')      # Get the selected subject
     booking_date_str = request.form.get('booking_date')
     booking_time_str = request.form.get('booking_time')
 
-    if not tutor_id or not booking_date_str or not booking_time_str:
+    if not tutor_id or not booking_date_str or not booking_time_str or not subject_id:
         flash("Missing required fields", "danger")
         return redirect(url_for('explore'))
 
     try:
         tutor_id = int(tutor_id)
+        subject_id = int(subject_id)
         booking_date = datetime.strptime(booking_date_str, '%Y-%m-%d').date()
         booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
 
         tutor = User.query.get(tutor_id)
+        subject = Subject.query.get(subject_id)
+        
         if not tutor or tutor.role != UserRole.TUTOR:
             flash(f'Invalid tutor selection.', 'danger')
+            return redirect(url_for('explore'))
+            
+        if not subject:
+            flash(f'Invalid subject selection.', 'danger')
             return redirect(url_for('explore'))
 
         # Ensure the student is actually a STUDENT
@@ -197,7 +204,8 @@ def book_appointment():
         # Create the appointment
         appointment = Appointment(
             student_id=current_user.id,  # The student is the current user
-            tutor_id=tutor.id,  # The tutor is from the form
+            tutor_id=tutor.id,           # The tutor is from the form
+            subject_id=subject.id,       # The subject is from the form
             booking_date=booking_date,
             booking_time=booking_time
         )
@@ -205,7 +213,7 @@ def book_appointment():
         db.session.add(appointment)
         db.session.commit()
 
-        flash(f"Appointment booked with {tutor.username} on {booking_date} at {booking_time}.", "success")
+        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}.", "success")
     except ValueError as e:
         flash(f"Invalid date/time format: {str(e)}", "danger")
     except Exception as e:

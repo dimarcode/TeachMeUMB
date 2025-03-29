@@ -28,6 +28,8 @@ class Subject(db.Model):
      name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
      topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
 
+     subject_appointments = db.relationship('Appointment', foreign_keys='Appointment.subject_id', backref='subject', lazy='dynamic')
+
 
 class User(UserMixin, db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -73,6 +75,7 @@ class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
 
     # when the appointment was created, and the date, and time, when it will take place
     created_date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)  # When the appointment was created

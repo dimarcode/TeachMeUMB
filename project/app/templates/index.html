@@ -2,6 +2,8 @@
 
 {% block content %}
     <h1>Hi, {{ current_user.username }}!</h1>
+    {% include '_myappointments.html' %}
+    
     {% if form %}
     <form action="" method="post">
         {{ form.hidden_tag() }}
