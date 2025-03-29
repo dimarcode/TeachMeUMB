@@ -1,12 +1,9 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, \
-    TextAreaField, SelectField, FormField, FieldList
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, \
-    Length, Regexp
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, HiddenField, DateField, TimeField
+from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length, Regexp
 import sqlalchemy as sa
 from app import db
 from app.models import User, UserRole, Subject
-# , Subject
 
 
 class LoginForm(FlaskForm):
@@ -77,3 +74,9 @@ class UserSubjectForm(FlaskForm):
         super(UserSubjectForm, self).__init__(*args, **kwargs)
         self.subject.choices = [(s.id, f"{s.name} - {s.topic}") for s in Subject.query.order_by(Subject.name).all()]
     
+
+class BookAppointmentForm(FlaskForm):
+    tutor_id = HiddenField("Tutor ID", validators=[DataRequired()])  # Hidden field to store tutor ID
+    booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
+    booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
+    submit = SubmitField("Book Appointment")

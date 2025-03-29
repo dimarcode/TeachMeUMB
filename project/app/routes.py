@@ -4,9 +4,9 @@ from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm
 # SubjectListForm, SubjectSelectForm
-from app.models import User, UserRole, Subject
+from app.models import User, UserRole, Subject, Appointment
 
 
 @app.before_request
@@ -71,12 +71,8 @@ def register():
 @login_required
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
-    # Query to fetch all subjects for the user
-    # subjects = db.session.execute(
-    #     sa.select(Subject).join(user_subjects).where(user_subjects.c.user_id == user.id)
-    # ).scalars().all()
-    
     return render_template('user.html', user=user, subjects=subjects)
+
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
@@ -95,11 +91,20 @@ def edit_profile():
                            form=form)
 
 
+# debug page to make sure subjects are adding and filtering correctly
 @app.route('/subjects', methods=['GET', 'POST'])
 @login_required
 def subjects():
     subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
     return render_template('subjects.html', title='Subjects', subjects=subjects)
+
+
+# debug page to make sure appointments are adding and filtering correctly
+@app.route('/appointments', methods=['GET', 'POST'])
+@login_required
+def appointments():
+    appointments = Appointment.query.order_by(Appointment.created_date)
+    return render_template('appointments.html', title='Appointmentss', appointments=appointments)
 
 
 @app.route('/add_subject', methods=['GET', 'POST'])
@@ -131,10 +136,12 @@ def remove_subject(subject_id):
         flash(f'You are not enrolled in {subject.name}', 'warning')
     return redirect(url_for('add_subject'))
 
+
 @app.route('/explore')
 @login_required
 def explore():
     # Find tutors who share subjects with the current user
+    form = BookAppointmentForm()
     tutors = User.query.filter(
         User.role == UserRole.TUTOR,  # Filter for tutors
         User.id != current_user.id,   # Exclude current user
@@ -155,49 +162,55 @@ def explore():
     return render_template('explore.html', 
                           title='Explore', 
                           tutors=tutors,
+                          form=form,
                           tutors_by_subject=tutors_by_subject)
 
-# @app.route('/my_subjects', methods=['GET', 'POST'])
-# @login_required
-# def my_subjects():
-#     form = SubjectSelectForm()
-#     if form.validate_on_submit():
-#         subject_name = form.subject_name.data
-#         subject = Subject.query.filter_by(name=subject_name).first()
-        
-#         if not subject:
-#             flash('Subject not found.', 'danger')
-#             return redirect(url_for('my_subjects'))
-        
-#         if subject in current_user.my_subject:
-#             flash('You already have this subject in your list.', 'warning')
-#             return redirect(url_for('my_subjects'))
-        
-#         # Add the subject to the user's subjects
-#         current_user.my_subject.append(subject)
-#         db.session.commit()
-        
-#         flash(f'Subject "{subject.name}" added successfully.', 'success')
-#         return redirect(url_for('my_subjects'))
-    
-#     subjects = Subject.query.all()
-    
-#     # Render the template with the form, user's current subjects, and all available subjects
-#     return render_template('my_subjects.html', 
-#                           form=form,
-#                           user_subjects=current_user.my_subject,
-#                           subjects=subjects)
 
-# @app.route('/remove_subject/<int:subject_id>', methods=['POST'])
-# @login_required
-# def remove_subject(subject_id):
-#     subject = Subject.query.get_or_404(subject_id)
-    
-#     if subject in current_user.my_subject:
-#         current_user.my_subject.remove(subject)
-#         db.session.commit()
-#         flash(f'Subject "{subject.name}" removed successfully.', 'success')
-#     else:
-#         flash('Subject not found in your list.', 'danger')
-        
-#     return redirect(url_for('my_subjects'))
+@app.route('/book_appointment', methods=['POST'])
+@login_required
+def book_appointment():
+    print(request.form.to_dict())  # Debugging: See incoming data
+
+    tutor_id = request.form.getlist('tutor_id')[-1]  # Ensure we get a valid tutor_id
+    booking_date_str = request.form.get('booking_date')
+    booking_time_str = request.form.get('booking_time')
+
+    if not tutor_id or not booking_date_str or not booking_time_str:
+        flash("Missing required fields", "danger")
+        return redirect(url_for('explore'))
+
+    try:
+        tutor_id = int(tutor_id)
+        booking_date = datetime.strptime(booking_date_str, '%Y-%m-%d').date()
+        booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+
+        tutor = User.query.get(tutor_id)
+        if not tutor or tutor.role != UserRole.TUTOR:
+            flash(f'Invalid tutor selection.', 'danger')
+            return redirect(url_for('explore'))
+
+        # Ensure the student is actually a STUDENT
+        if current_user.role != UserRole.STUDENT:
+            flash("Only students can book appointments.", "danger")
+            return redirect(url_for('explore'))
+
+        # Create the appointment
+        appointment = Appointment(
+            student_id=current_user.id,  # The student is the current user
+            tutor_id=tutor.id,  # The tutor is from the form
+            booking_date=booking_date,
+            booking_time=booking_time
+        )
+
+        db.session.add(appointment)
+        db.session.commit()
+
+        flash(f"Appointment booked with {tutor.username} on {booking_date} at {booking_time}.", "success")
+    except ValueError as e:
+        flash(f"Invalid date/time format: {str(e)}", "danger")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error booking appointment: {str(e)}", "danger")
+
+    return redirect(url_for('explore'))
+

@@ -3,7 +3,8 @@ from hashlib import md5
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-import datetime
+from datetime import datetime, timezone
+from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, DateTime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -72,10 +73,16 @@ class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    created_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # When the appointment was created
+
+    # when the appointment was created, and the date, and time, when it will take place
+    created_date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)  # When the appointment was created
     booking_date = db.Column(db.Date, nullable=False)  # The user-selected date for the appointment
     booking_time = db.Column(db.Time, nullable=False)  # The user-selected time for the appointment
-   # status = db.Column(db.String(20), default='pending')
+   
+   # status = db.Column(db.String(20), default='pending') # Ignored for now until status functionality added
+
+    def __repr__(self):
+        return f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time}>"
 
 
 @login.user_loader

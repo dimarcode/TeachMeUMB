@@ -8,7 +8,7 @@
         <p>These tutors are enrolled in subjects you're taking:</p>
         <div class="row">
             {% for tutor in tutors %}
-                {% include '_tutorcard.html' %}
+                {% include '_tutorcard.html'  with context %}
                 {% include '_sharedsubject.html' %}
             {% endfor %}
         </div>
@@ -33,7 +33,7 @@
                     <div class="accordion-body">
                         <div class="row">
                             {% for tutor in subject_tutors %}
-                                {% include '_tutorcard.html' %}
+                                {% include '_tutorcard.html' with context %}
                             {% endfor %}
                         </div>
                     </div>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <h1>Appointments</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Student ID</th>
+                <th>Tutor ID</th>
+                <th>Created Date</th>
+                <th>Booking Date</th>
+                <th>Booking Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for appointment in appointments %}
+            <tr>
+                <td>{{ appointment.id }}</td>
+                <td>{{ appointment.student_id }}</td>
+                <td>{{ appointment.tutor_id }}</td>
+                <td>{{ appointment.created_date }}</td>
+                <td>{{ appointment.booking_date }}</td>
+                <td>{{ appointment.booking_time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

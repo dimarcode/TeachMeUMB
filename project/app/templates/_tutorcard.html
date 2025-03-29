@@ -1,16 +1,31 @@
     
     <table>
-        <tr>
-            <td><img src="{{ tutor.avatar(36) }}"></td>
-            <td><a href="{{ url_for('user', username=tutor.username) }}">
-                    <strong>{{ tutor.username }}<br></strong>
-                </a>
-                About {{ tutor.username }}:<br>
-                {% if tutor.about_me %}
-                    {{ tutor.about_me }}
-                {% else %}
-                    No additional information available.
-                {% endif %}
-            </td>
-        </tr>
+    <tr>
+        <td><img src="{{ tutor.avatar(36) }}"></td>
+        <td><a href="{{ url_for('user', username=tutor.username) }}">
+                <strong>{{ tutor.username }}<br></strong>
+            </a>
+            About {{ tutor.username }}:<br>
+            {% if tutor.about_me %}
+                {{ tutor.about_me }}
+            {% else %}
+                No additional information available.
+            {% endif %}
+            <!-- In _tutorcard.html - use a GET request with the ID in the URL -->
+            <form action="{{ url_for('book_appointment', tutor_id=tutor.id) }}" method="POST">
+                {{ form.hidden_tag() }}  {# Ensures CSRF token is included #}
+                <input type="hidden" name="tutor_id" value="{{ tutor.id if tutor.id else '' }}">
+
+
+                
+                <label for="booking_date">Date:</label>
+                <input type="date" name="booking_date" required>
+                
+                <label for="booking_time">Time:</label>
+                <input type="time" name="booking_time" required>
+                
+                <button type="submit" class="btn btn-primary">Book Appointment</button>
+            </form>
+        </td>
+    </tr>
     </table>
