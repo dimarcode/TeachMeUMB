@@ -24,11 +24,23 @@ class UserRole(Enum):
 
 
 class Subject(db.Model):
-     id:so.Mapped[int] = so.mapped_column(primary_key=True)
-     name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
-     topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+    id:so.Mapped[int] = so.mapped_column(primary_key=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+    topic: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
 
-     subject_appointments = db.relationship('Appointment', foreign_keys='Appointment.subject_id', backref='subject', lazy='dynamic')
+    subject_appointments = db.relationship('Appointment', foreign_keys='Appointment.subject_id', 
+                                           backref='subject', lazy='dynamic')
+    requested_subjects = db.relationship('RequestedSubject', foreign_keys='RequestedSubject.subject_id',
+                                            backref='requested_subject', lazy='dynamic')
+    
+
+class RequestedSubject(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    def __repr__(self):
+        return f"<RequestedSubject Subject ID: {self.subject_id}, Student ID: {self.student_id}>"
 
 
 class User(UserMixin, db.Model):
@@ -50,6 +62,9 @@ class User(UserMixin, db.Model):
     # defines relationship to user_subjects table, and therefore subjects table
     my_subjects = so.relationship("Subject", secondary=user_subject, 
                                   backref="subject_user")
+
+    user_requested_subjects = db.relationship('RequestedSubject', foreign_keys='RequestedSubject.student_id',
+                                            backref='student_requester', lazy='dynamic')
 
     # defines relationship to appointments table for users with either student or tutor role
     student_appointments = db.relationship('Appointment', foreign_keys='Appointment.student_id', 
@@ -82,10 +97,29 @@ class Appointment(db.Model):
     booking_date = db.Column(db.Date, nullable=False)  # The user-selected date for the appointment
     booking_time = db.Column(db.Time, nullable=False)  # The user-selected time for the appointment
    
-   # status = db.Column(db.String(20), default='pending') # Ignored for now until status functionality added
+    # New status column
+    status = db.Column(db.String(20), default='pending', nullable=False)  # Status of the appointment
+
+    def confirm(self):
+        """Confirm the appointment."""
+        self.status = 'confirmed'
+
+    def cancel(self):
+        """Cancel the appointment."""
+        self.status = 'cancelled'
+
+    def approve(self):
+        """Approve the appointment."""
+        self.status = 'approved'
+
+    def update(self, booking_date, booking_time):
+        """Update the appointment details."""
+        self.booking_date = booking_date
+        self.booking_time = booking_time
+        self.status = 'pending'
 
     def __repr__(self):
-        return f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time}>"
+        return f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - Status: {self.status}>"
 
 
 @login.user_loader

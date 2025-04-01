@@ -4,7 +4,7 @@ from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
 import sqlalchemy as sa
 from app import app, db
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm
 from app.models import User, UserRole, Subject, Appointment
 
 
@@ -19,7 +19,15 @@ def before_request():
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
-    return render_template('index.html', title='Home')
+    form = BookAppointmentForm()
+    student_appointments = list(current_user.student_appointments)
+    tutor_appointments = list(current_user.tutor_appointments)
+    return render_template(
+        'index.html', 
+        student_appointments=student_appointments, 
+        tutor_appointments=tutor_appointments,
+        form=form,
+    )
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -70,7 +78,8 @@ def register():
 @login_required
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
-    return render_template('user.html', user=user, subjects=subjects)
+    form = BookAppointmentForm()  # Create an instance of the form
+    return render_template('user.html', user=user, form=form)
 
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
@@ -103,7 +112,7 @@ def subjects():
 @login_required
 def appointments():
     appointments = Appointment.query.order_by(Appointment.created_date)
-    return render_template('appointments.html', title='Appointmentss', appointments=appointments)
+    return render_template('appointments.html', title='Appointments', appointments=appointments)
 
 
 @app.route('/add_subject', methods=['GET', 'POST'])
@@ -133,7 +142,7 @@ def remove_subject(subject_id):
         flash(f'You have successfully unenrolled from {subject.name}!', 'success')
     else:
         flash(f'You are not enrolled in {subject.name}', 'warning')
-    return redirect(url_for('add_subject'))
+    return redirect(request.referrer or url_for('add_subject'))
 
 
 @app.route('/explore')
@@ -222,3 +231,54 @@ def book_appointment():
 
     return redirect(url_for('explore'))
 
+
+@app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
+@login_required
+def remove_appointment(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Debugging: Log the IDs for inspection
+    app.logger.info(f"Current user ID: {current_user.id}")
+    app.logger.info(f"Appointment ID: {appointment.id}")
+    app.logger.info(f"Appointment student ID: {appointment.student_id}")
+    app.logger.info(f"Appointment tutor ID: {appointment.tutor_id}")
+
+    # Check if the current user is associated with the appointment
+    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
+        flash("You are not authorized to cancel this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Remove the appointment
+        db.session.delete(appointment)
+        db.session.commit()
+        flash("The appointment has been successfully canceled.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
+
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/approve_appointment/<int:appointment_id>', methods=['POST'])
+@login_required
+def approve_appointment(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Ensure the current user is the tutor for this appointment
+    if appointment.tutor_id != current_user.id:
+        flash("You are not authorized to approve this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Approve the appointment
+        appointment.approve()
+        db.session.commit()
+        flash(f"Appointment {appointment.id} has been approved.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while approving the appointment: {str(e)}", "danger")
+
+    return redirect(request.referrer or url_for('index'))

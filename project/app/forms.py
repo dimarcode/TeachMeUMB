@@ -37,9 +37,9 @@ class RegistrationForm(FlaskForm):
         if user is not None:
             raise ValidationError('Please use a different username.')
 
-    def validate_umass_boston_id(self, umass_boston_id):
+    def validate_umb_id(self, umb_id):
         user = db.session.scalar(sa.select(User).where(
-            User.umass_boston_id == umass_boston_id.data))
+            User.umb_id == umb_id.data))
         if user is not None:
             raise ValidationError('This Umass Boston ID is already registered.')
 
@@ -80,3 +80,8 @@ class BookAppointmentForm(FlaskForm):
     booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
     submit = SubmitField("Book Appointment")
+
+class UpdateAppointmentForm(FlaskForm):
+    booking_date = DateField("New Date", format='%Y-%m-%d', validators=[DataRequired()])
+    booking_time = TimeField("New Time", format='%H:%M', validators=[DataRequired()])
+    submit = SubmitField("Update Appointment")

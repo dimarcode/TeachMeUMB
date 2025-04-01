@@ -1,7 +1,4 @@
-    <div class="mt-5">
-    <h2>Upcoming Appointments</h2>
-    {% if current_user.student_appointments %}
-
+<div class="mt-5">
     <table class="table">
     <thead>
         <tr>
@@ -12,6 +9,7 @@
             <th>Created Date</th>
             <th>Booking Date</th>
             <th>Booking Time</th>
+            <th>Actions</th> <!-- Added Actions column -->
         </tr>
     </thead>
     <tbody>
@@ -24,11 +22,48 @@
             <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
             <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>
             <td>{{ appointment.booking_time.strftime('%H:%M') }}</td>
+            <td>
+                {% if appointment.status == 'pending' and current_user.id == appointment.tutor_id %}
+                    <!-- Approve button for tutors -->
+                    <form action="{{ url_for('approve_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                        {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                    </form>
+                {% endif %}
+                <!-- Cancel button -->
+                <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        {% for appointment in current_user.tutor_appointments %}
+        <tr>
+            <td>{{ appointment.id }}</td>
+            <td>{{ appointment.student.username }}</td>
+            <td>{{ appointment.tutor.username }}</td>
+            <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
+            <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
+            <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>
+            <td>{{ appointment.booking_time.strftime('%H:%M') }}</td>
+            <!-- Confirm button for tutors -->
+            <td>
+                {% if appointment.status == 'pending' and current_user.id == appointment.tutor_id %}
+                    <!-- Approve button for tutors -->
+                    <form action="{{ url_for('approve_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                        {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                    </form>
+                {% endif %}
+                <!-- Cancel button -->
+                <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </tbody>
     </table>
-    {% else %}
-        <p>You haven't booked any appointments yet.</p>
-    {% endif %}
 </div>

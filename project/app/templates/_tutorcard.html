@@ -2,9 +2,8 @@
     <div class="card h-100">
         <div class="card-header">
             <div class="d-flex align-items-center">
-                <img src="{{ tutor.avatar(36) }}" class="rounded-circle me-3" alt="Profile Picture">
                 <div>
-                    <h5 class="card-title mb-0">{{ tutor.username }}</h5>
+                    <h3 class="card-title mb-0"><img src="{{ tutor.avatar(36) }}" class="rounded-circle me-3" alt="Profile Picture">{{ tutor.username }}</h3>
                 </div>
             </div>
         </div>
@@ -17,14 +16,16 @@
             
             <!-- Form for booking appointment -->
             <form action="{{ url_for('book_appointment') }}" method="post">
+                {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+
                 <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
-                
+
                 <!-- Subject Dropdown -->
                 <div class="form-group mb-3">
                     <label for="subject-{{ tutor.id }}">Select Subject:</label>
                     <select name="subject_id" id="subject-{{ tutor.id }}" class="form-control" required>
                         <option value="" disabled selected>-- Select a subject --</option>
-                        
+
                         {% if subject is defined %}
                             <!-- If we're in the subject-specific accordion section -->
                             <option value="{{ subject.id }}">{{ subject.name }} - {{ subject.topic }}</option>
@@ -38,19 +39,19 @@
                         {% endif %}
                     </select>
                 </div>
-                
+
                 <!-- Date picker -->
                 <div class="form-group mb-3">
                     <label for="booking_date-{{ tutor.id }}">Date:</label>
                     <input type="date" name="booking_date" id="booking_date-{{ tutor.id }}" class="form-control" required>
                 </div>
-                
+
                 <!-- Time picker -->
                 <div class="form-group mb-3">
                     <label for="booking_time-{{ tutor.id }}">Time:</label>
                     <input type="time" name="booking_time" id="booking_time-{{ tutor.id }}" class="form-control" required>
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary">Book Appointment</button>
             </form>
         </div>

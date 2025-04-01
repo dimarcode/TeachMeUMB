@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+
     <table>
         <tr valign="top">
             <td><img src="{{ user.avatar(128) }}"></td>
@@ -15,13 +16,25 @@
                 {% if user == current_user %}
                 <p><a href="{{ url_for('edit_profile') }}">Edit your profile</a></p>
                 <p><a href="{{ url_for('add_subject') }}">Manage your subjects</a></p>
-                {% if user.my_subjects %}
-                    {% include '_currentclasses.html' %}
-                {% else %}
-                <p>Not enrolled in any subjects yet.</p>
-                {% endif %}
                 {% endif %}
             </td>
         </tr>
     </table>
+
+    <h3>Your subjects:</h3>
+
+        {% if user.my_subjects %}
+            {% include '_currentclasses.html' %}
+        {% else %}
+            <p>You haven't enrolled in any classes yet.</p>
+        {% endif %}
+
+    <h3>Your appointments:</h3>
+
+        {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
+            {% include '_myappointments.html' %}
+        {% else %}
+            <p>You haven't booked any appointments yet.</p>
+        {% endif %}
+
 {% endblock %}

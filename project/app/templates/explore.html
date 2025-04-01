@@ -2,6 +2,15 @@
 
 {% block content %}
 <div class="container">
+    <!-- Add the button -->
+    <div class="mt-5 text-center">
+        <form action="{{ url_for('appointments') }}" method="post">
+            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+            <button type="submit" class="btn btn-warning">
+                I can't find any tutors for my class
+            </button>
+        </form>
+    </div>
     {% if tutors %}
     <div class="mt-5">
         <h2>Available Tutors</h2>

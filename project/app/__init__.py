@@ -7,6 +7,7 @@ from flask_migrate import Migrate
 from flask_login import LoginManager
 from config import Config
 from sqlalchemy import MetaData
+from flask_wtf.csrf import CSRFProtect
 
 naming_convention = {
     "ix": "ix_%(column_0_label)s",
@@ -22,6 +23,8 @@ db = SQLAlchemy(app, metadata=MetaData(naming_convention=naming_convention))
 migrate = Migrate(app, db)
 login = LoginManager(app)
 login.login_view = 'login'
+csrf = CSRFProtect(app)
+csrf.init_app(app)
 
 if not app.debug:
     if app.config['MAIL_SERVER']:
