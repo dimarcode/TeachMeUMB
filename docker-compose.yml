@@ -8,6 +8,18 @@ services:
     environment:
       - FLASK_APP=teachmeumb.py
       - FLASK_DEBUG=1
+      - MAIL_SERVER=mail
+      - MAIL_PORT=1025
+
+  mail:
+    build: ./mail  # Build the MailHog image from the Dockerfile in the 'mail' folder
+    ports:
+      - "8025:8025"  # MailHog web interface
+      - "1025:1025"  # SMTP server
+    environment:
+      - MAIL_SERVER=localhost
+      - MAIL_PORT=1025
+
 volumes:
   pycache:
     driver: local

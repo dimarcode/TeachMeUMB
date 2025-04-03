@@ -2,8 +2,9 @@ from datetime import datetime, timezone
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
+from flask_mail import Message
 import sqlalchemy as sa
-from app import app, db
+from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm
 from app.models import User, UserRole, Subject, Appointment
 
@@ -14,6 +15,13 @@ def before_request():
         current_user.last_seen = datetime.now(timezone.utc)
         db.session.commit()
 
+@app.route('/send-email', methods=['GET', 'POST'])
+@login_required
+def send_email():
+    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
+    msg.body = "This is a test email sent from Flask."
+    mail.send(msg)
+    return "Email sent!"
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
