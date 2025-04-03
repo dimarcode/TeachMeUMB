@@ -2,8 +2,8 @@
 
 {% block content %}
     <h1>Hi, {{ current_user.username }}!</h1>
-
     <h3>Your appointments:</h3>
+    <form method="post">
         {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
             {% include '_myappointments.html' %}
         {% else %}
