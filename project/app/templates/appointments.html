@@ -12,6 +12,9 @@
                 <th>Created Date</th>
                 <th>Booking Date</th>
                 <th>Booking Time</th>
+                <th>Status</th>
+                <th>Last Updated By</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -23,6 +26,11 @@
                 <td>{{ appointment.created_date }}</td>
                 <td>{{ appointment.booking_date }}</td>
                 <td>{{ appointment.booking_time }}</td>
+                <td>{{ appointment.status }}</td>
+                <td>{{ appointment.last_updated_by }}</td>
+                <td>
+                    <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

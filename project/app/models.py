@@ -20,7 +20,7 @@ user_subject = db.Table(
 
 class UserRole(Enum):
     STUDENT = "student"
-    TUTOR = "tutor"
+    TUTOR = "tutor"    
 
 
 class Subject(db.Model):
@@ -92,34 +92,34 @@ class Appointment(db.Model):
     tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
 
-    # when the appointment was created, and the date, and time, when it will take place
-    created_date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)  # When the appointment was created
-    booking_date = db.Column(db.Date, nullable=False)  # The user-selected date for the appointment
-    booking_time = db.Column(db.Time, nullable=False)  # The user-selected time for the appointment
-   
-    # New status column
-    status = db.Column(db.String(20), default='pending', nullable=False)  # Status of the appointment
+    created_date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)
+    booking_date = db.Column(db.Date, nullable=False)
+    booking_time = db.Column(db.Time, nullable=False)
+    status = db.Column(db.String(20), default='pending', nullable=False)
 
-    def confirm(self):
+    # Track who last updated the appointment
+    last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
+
+    def confirm(self, user_role):
         """Confirm the appointment."""
         self.status = 'confirmed'
+        self.last_updated_by = user_role
 
-    def cancel(self):
+    def cancel(self, user_role):
         """Cancel the appointment."""
         self.status = 'cancelled'
+        self.last_updated_by = user_role
 
-    def approve(self):
-        """Approve the appointment."""
-        self.status = 'approved'
-
-    def update(self, booking_date, booking_time):
+    def update(self, booking_date, booking_time, user_role):
         """Update the appointment details."""
         self.booking_date = booking_date
         self.booking_time = booking_time
         self.status = 'pending'
+        self.last_updated_by = user_role
 
     def __repr__(self):
-        return f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - Status: {self.status}>"
+        return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
+                f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")
 
 
 @login.user_loader

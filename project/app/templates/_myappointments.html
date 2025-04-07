@@ -1,70 +1,57 @@
 <div class="mt-5">
     <table class="table">
-    <h2>Your appointments:</h2>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Student</th>
-            <th>Tutor</th>
-            <th>Subject</th>
-            <th>Booked On</th>
-            <th>Appointment Date</th>
-            <th>Appointment Time</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for appointment in current_user.student_appointments %}
-        <tr>
-            <td>{{ appointment.id }}</td>
-            <td>{{ appointment.student.username }}</td>
-            <td>{{ appointment.tutor.username }}</td>
-            <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
-            <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
-            <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>
-            <td>{{ appointment.booking_time.strftime('%H:%M') }}</td>
-            <td>
-                {% if appointment.status == 'pending' and current_user.id == appointment.tutor_id %}
-                    <!-- Approve button for tutors -->
-                    <form action="{{ url_for('approve_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                        {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                    </form>
-                {% endif %}
-                <!-- Cancel button -->
-                <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-        {% for appointment in current_user.tutor_appointments %}
-        <tr>
-            <td>{{ appointment.id }}</td>
-            <td>{{ appointment.student.username }}</td>
-            <td>{{ appointment.tutor.username }}</td>
-            <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
-            <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
-            <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>
-            <td>{{ appointment.booking_time.strftime('%H:%M') }}</td>
-            <!-- Confirm button for tutors -->
-            <td>
-                {% if appointment.status == 'pending' and current_user.id == appointment.tutor_id %}
-                    <!-- Approve button for tutors -->
-                    <form action="{{ url_for('approve_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                        {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
-                    </form>
-                {% endif %}
-                <!-- Cancel button -->
-                <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
+        <h2>Your appointments:</h2>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Student</th>
+                <th>Tutor</th>
+                <th>Subject</th>
+                <th>Booked On</th>
+                <th>Appointment Date</th>
+                <th>Appointment Time</th>
+                <th>Appointment Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set all_appointments = current_user.student_appointments.all() + current_user.tutor_appointments.all() %}
+            {% if all_appointments %}
+                {% for appointment in all_appointments %}
+                <tr>
+                    <td>{{ appointment.id }}</td>
+                    <td>{{ appointment.student.username }}</td>
+                    <td>{{ appointment.tutor.username }}</td>
+                    <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
+                    <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
+                    <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>
+                    <td>{{ appointment.booking_time.strftime('%H:%M') }}</td>
+                    <td>{{ appointment.status }}</td>
+                    <td>
+                        <!-- Update button -->
+                        <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
+
+                        <!-- Confirm button -->
+                        {% if appointment.status == 'pending' and current_user.role.value != appointment.last_updated_by.value %}
+                            <form action="{{ url_for('confirm_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                                {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                                <button type="submit" class="btn btn-success btn-sm">Confirm</button>
+                            </form>
+                        {% endif %}
+
+                        <!-- Cancel button -->
+                        <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="9" class="text-center">You have no appointments.</td>
+                </tr>
+            {% endif %}
+        </tbody>
     </table>
 </div>

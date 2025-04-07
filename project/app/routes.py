@@ -185,10 +185,8 @@ def explore():
 @app.route('/book_appointment', methods=['POST'])
 @login_required
 def book_appointment():
-    print(request.form.to_dict())  # Debugging: See incoming data
-
-    tutor_id = request.form.getlist('tutor_id')[-1]  # Ensure we get a valid tutor_id
-    subject_id = request.form.get('subject_id')      # Get the selected subject
+    tutor_id = request.form.getlist('tutor_id')[-1]
+    subject_id = request.form.get('subject_id')
     booking_date_str = request.form.get('booking_date')
     booking_time_str = request.form.get('booking_time')
 
@@ -204,27 +202,27 @@ def book_appointment():
 
         tutor = User.query.get(tutor_id)
         subject = Subject.query.get(subject_id)
-        
+
         if not tutor or tutor.role != UserRole.TUTOR:
             flash(f'Invalid tutor selection.', 'danger')
             return redirect(url_for('explore'))
-            
+
         if not subject:
             flash(f'Invalid subject selection.', 'danger')
             return redirect(url_for('explore'))
 
-        # Ensure the student is actually a STUDENT
         if current_user.role != UserRole.STUDENT:
             flash("Only students can book appointments.", "danger")
             return redirect(url_for('explore'))
 
         # Create the appointment
         appointment = Appointment(
-            student_id=current_user.id,  # The student is the current user
-            tutor_id=tutor.id,           # The tutor is from the form
-            subject_id=subject.id,       # The subject is from the form
+            student_id=current_user.id,
+            tutor_id=tutor.id,
+            subject_id=subject.id,
             booking_date=booking_date,
-            booking_time=booking_time
+            booking_time=booking_time,
+            last_updated_by=current_user.role
         )
 
         db.session.add(appointment)
@@ -240,17 +238,69 @@ def book_appointment():
     return redirect(url_for('explore'))
 
 
+@app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])
+@login_required
+def confirm_appointment(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Ensure the current user is the tutor for this appointment
+    if appointment.last_updated_by == current_user.role:
+        flash("You are not authorized to confirm this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Confirm the appointment and set last_updated_by
+        appointment.confirm(current_user.role)
+        db.session.commit()
+        flash(f"Appointment {appointment.id} has been confirmed.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while confirming the appointment: {str(e)}", "danger")
+
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST'])
+@login_required
+def appointment_update(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Ensure the current user is associated with the appointment
+    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
+        flash("You are not authorized to update this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    form = UpdateAppointmentForm()
+
+    if form.validate_on_submit():
+        try:
+            # Update the appointment details
+            appointment.update(
+                booking_date=form.booking_date.data,
+                booking_time=form.booking_time.data,
+                user_role=current_user.role
+            )
+            db.session.commit()
+            flash("The appointment has been successfully updated.", "success")
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
+
+    # Pre-fill the form with the current appointment details
+    form.booking_date.data = appointment.booking_date
+    form.booking_time.data = appointment.booking_time
+
+    return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
+
+
 @app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
 @login_required
 def remove_appointment(appointment_id):
     # Fetch the appointment
     appointment = Appointment.query.get_or_404(appointment_id)
-
-    # Debugging: Log the IDs for inspection
-    app.logger.info(f"Current user ID: {current_user.id}")
-    app.logger.info(f"Appointment ID: {appointment.id}")
-    app.logger.info(f"Appointment student ID: {appointment.student_id}")
-    app.logger.info(f"Appointment tutor ID: {appointment.tutor_id}")
 
     # Check if the current user is associated with the appointment
     if current_user.id not in [appointment.student_id, appointment.tutor_id]:
@@ -258,35 +308,13 @@ def remove_appointment(appointment_id):
         return redirect(request.referrer or url_for('index'))
 
     try:
-        # Remove the appointment
+        # Cancel the appointment and set last_updated_by
+        appointment.cancel(current_user.role)
         db.session.delete(appointment)
         db.session.commit()
         flash("The appointment has been successfully canceled.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
-
-    return redirect(request.referrer or url_for('index'))
-
-
-@app.route('/approve_appointment/<int:appointment_id>', methods=['POST'])
-@login_required
-def approve_appointment(appointment_id):
-    # Fetch the appointment
-    appointment = Appointment.query.get_or_404(appointment_id)
-
-    # Ensure the current user is the tutor for this appointment
-    if appointment.tutor_id != current_user.id:
-        flash("You are not authorized to approve this appointment.", "danger")
-        return redirect(request.referrer or url_for('index'))
-
-    try:
-        # Approve the appointment
-        appointment.approve()
-        db.session.commit()
-        flash(f"Appointment {appointment.id} has been approved.", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while approving the appointment: {str(e)}", "danger")
 
     return redirect(request.referrer or url_for('index'))
