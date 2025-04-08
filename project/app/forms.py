@@ -3,7 +3,7 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextA
 from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length, Regexp
 import sqlalchemy as sa
 from app import db
-from app.models import User, UserRole, Subject
+from app.models import User, UserRole, Subject, user_subject
 
 
 class LoginForm(FlaskForm):
@@ -87,3 +87,20 @@ class UpdateAppointmentForm(FlaskForm):
     booking_date = DateField("New Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("New Time", format='%H:%M', validators=[DataRequired()])
     submit = SubmitField("Update Appointment")
+
+class RequestClassForm(FlaskForm):
+    student_id = HiddenField("Student ID", validators=[DataRequired()])  # Hidden field to store student ID
+    subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Request Class')
+
+    def __init__(self, user_id, *args, **kwargs):
+        super(RequestClassForm, self).__init__(*args, **kwargs)
+        # Query the subjects associated with the given user_id
+        self.subject.choices = [
+            (subject.id, f"{subject.name} - {subject.topic}")
+            for subject in db.session.query(Subject)
+            .join(user_subject, user_subject.c.subject_id == Subject.id)
+            .filter(user_subject.c.user_id == user_id)
+            .order_by(Subject.name)
+            .all()
+        ]

@@ -5,8 +5,8 @@ from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 import sqlalchemy as sa
 from app import app, db, mail
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm
-from app.models import User, UserRole, Subject, Appointment
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
+from app.models import User, UserRole, Subject, Appointment, RequestedSubject
 
 
 @app.before_request
@@ -15,13 +15,11 @@ def before_request():
         current_user.last_seen = datetime.now(timezone.utc)
         db.session.commit()
 
-@app.route('/send-email', methods=['GET', 'POST'])
-@login_required
-def send_email():
-    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
-    msg.body = "This is a test email sent from Flask."
-    mail.send(msg)
-    return "Email sent!"
+
+@app.context_processor
+def inject_user_role():
+    return dict(UserRole=UserRole)
+
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
@@ -80,6 +78,15 @@ def register():
         flash('Congratulations, you are now a registered user!')
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
+
+
+@app.route('/send-email', methods=['GET', 'POST'])
+@login_required
+def send_email():
+    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
+    msg.body = "This is a test email sent from Flask."
+    mail.send(msg)
+    return "Email sent!"
 
 
 @app.route('/user/<username>')
@@ -318,3 +325,34 @@ def remove_appointment(appointment_id):
         flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
 
     return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/request_class', methods=['GET', 'POST'])
+@login_required
+def request_class():
+    if current_user.role != UserRole.STUDENT:
+        flash("Only students can request classes.", "danger")
+        return redirect(url_for('explore'))
+
+    form = RequestClassForm(user_id=current_user.id)
+    if form.validate_on_submit():
+        # Check if the subject is already requested
+        existing_request = db.session.query(RequestedSubject).filter_by(
+            subject_id=form.subject.data,
+            student_id=current_user.id
+        ).first()
+
+        if existing_request:
+            flash("You have already requested this class.", "warning")
+        else:
+            # Add a new entry to the RequestedSubject table
+            requested_subject = RequestedSubject(
+                subject_id=form.subject.data,
+                student_id=current_user.id
+            )
+            db.session.add(requested_subject)
+            db.session.commit()
+            flash("Your class request has been submitted successfully!", "success")
+        return redirect(url_for('explore'))
+
+    return render_template('request_class.html', title='Request Class', form=form)

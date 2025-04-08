@@ -3,14 +3,13 @@
 {% block content %}
 <div class="container">
     <!-- Add the button -->
+    {% if current_user.role == UserRole.STUDENT %}
     <div class="mt-5 text-center">
-        <form action="{{ url_for('appointments') }}" method="post">
-            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-            <button type="submit" class="btn btn-warning">
-                I can't find any tutors for my class
-            </button>
-        </form>
+        <a href="{{ url_for('request_class') }}" class="btn btn-warning">
+            I can't find any tutors for my class
+        </a>
     </div>
+    {% endif %}
     {% if tutors %}
     <div class="mt-5">
         <h2>Available Tutors</h2>
