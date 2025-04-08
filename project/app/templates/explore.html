@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-
+{% import 'bootstrap_wtf.html' as wtf %}
 {% block content %}
 <div class="container">
     {% if current_user.role == UserRole.STUDENT %}
@@ -51,34 +51,47 @@
         </div>
         {% endif %}
     {% elif current_user.role == UserRole.TUTOR %}
-        <!-- Tutor View -->
-        <div class="mt-5">
-            <h2>Students Requesting Classes</h2>
-            {% if requested_classes %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Student Username</th>
-                            <th>Email</th>
-                            <th>About Me</th>
-                            <th>Requested Class</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for request, student, subject in requested_classes %}
-                        <tr>
-                            <td>{{ student.username }}</td>
-                            <td>{{ student.email }}</td>
-                            <td>{{ student.about_me }}</td>
-                            <td>{{ subject.name }} - {{ subject.topic }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>No students have requested classes yet.</p>
-            {% endif %}
-        </div>
-    {% endif %}
+    <!-- Tutor View -->
+    <div class="mt-5">
+        <h2>Students Requesting Classes</h2>
+        {% if requested_classes %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student Username</th>
+                        <th>Email</th>
+                        <th>About Me</th>
+                        <th>Requested Class</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request, student, subject in requested_classes %}
+                    <tr>
+                        <td>{{ student.username }}</td>
+                        <td>{{ student.email }}</td>
+                        <td>{{ student.about_me }}</td>
+                        <td>{{ subject.name }} - {{ subject.topic }}</td>
+                        <td>
+                            <!-- Check if the tutor already has the class -->
+                            {% if subject not in current_user.my_subjects %}
+                                <form action="{{ url_for('add_subject') }}" method="post" style="display:inline;">
+                                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                                    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                    <button type="submit" class="btn btn-success btn-sm">Add Class</button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted">Class already added</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No students have requested classes yet.</p>
+        {% endif %}
+    </div>
+{% endif %}
 </div>
 {% endblock %}

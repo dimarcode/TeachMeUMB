@@ -26,15 +26,34 @@ def inject_user_role():
 @login_required
 def index():
     form = BookAppointmentForm()
-    student_appointments = list(current_user.student_appointments)
-    tutor_appointments = list(current_user.tutor_appointments)
+
+    # Convert query objects to lists and combine them
+    all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
+
+    # Separate appointments by status
+    pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
+    confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
+
+    # Further separate pending appointments
+    pending_needs_approval = [
+        appointment for appointment in pending_appointments
+        if appointment.last_updated_by != current_user.role
+    ]
+    pending_waiting_for_other = [
+        appointment for appointment in pending_appointments
+        if appointment.last_updated_by == current_user.role
+    ]
+
+    # Query requested subjects for the current user
     requested_subjects = db.session.query(Subject).join(RequestedSubject).filter(
         RequestedSubject.student_id == current_user.id
     ).all()
+
     return render_template(
-        'index.html', 
-        student_appointments=student_appointments, 
-        tutor_appointments=tutor_appointments,
+        'index.html',
+        pending_needs_approval=pending_needs_approval,
+        pending_waiting_for_other=pending_waiting_for_other,
+        confirmed_appointments=confirmed_appointments,
         requested_subjects=requested_subjects,
         form=form,
     )
@@ -137,6 +156,20 @@ def appointments():
 @app.route('/add_subject', methods=['GET', 'POST'])
 @login_required
 def add_subject():
+    if request.method == 'POST':
+        subject_id = request.form.get('subject_id')
+        subject = Subject.query.get(subject_id)
+        if subject:
+            if subject in current_user.my_subjects:
+                flash(f'You already have {subject.name} added to your profile.', 'warning')
+            else:
+                current_user.my_subjects.append(subject)
+                db.session.commit()
+                flash(f'{subject.name} has been added to your profile.', 'success')
+        else:
+            flash('Invalid subject.', 'danger')
+        return redirect(url_for('explore'))
+
     form = UserSubjectForm()
     if form.validate_on_submit():
         subject = Subject.query.get(form.subject.data)

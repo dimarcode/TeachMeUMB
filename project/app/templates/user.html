@@ -27,12 +27,6 @@
             <p>You haven't enrolled in any classes yet.</p>
         {% endif %}
 
-        {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
-            {% include '_myappointments.html' %}
-        {% else %}
-            <p>You haven't booked any appointments yet.</p>
-        {% endif %}
-
     <form action="/send-email" method="post">
         {{ form.hidden_tag() }} <!-- Automatically includes the CSRF token -->
         {{ form.submit() }}

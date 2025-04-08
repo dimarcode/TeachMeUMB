@@ -2,24 +2,128 @@
 
 {% block content %}
     <h1>Hi, {{ current_user.username }}!</h1>
-        {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
-            {% include '_myappointments.html' %}
-        {% else %}
-            <p>You haven't booked any appointments yet.</p>
-        {% endif %}
-        <!-- Requested Subjects Section -->
+    {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
+        <!-- Pending Appointments That Need Your Approval -->
         <div class="mt-5">
-            <h2>Your Requested Classes</h2>
-            {% if requested_subjects %}
-                <ul class="list-group">
-                    {% for subject in requested_subjects %}
-                        <li class="list-group-item">
-                            {{ subject.name }} - {{ subject.topic }}
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p>You haven't requested any classes yet.</p>
+            {% if pending_needs_approval %}
+                <h3>Appointments Waiting for Your Approval</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            {% if current_user.role == UserRole.TUTOR %}
+                                <th>Student</th>
+                            {% else %}
+                                <th>Tutor</th>
+                            {% endif %}
+                            <th>Subject</th>
+                            <th>Booked On</th>
+                            <th>Appointment Date</th>
+                            <th>Appointment Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in pending_needs_approval %}
+                            {% include '_appointment.html' with context %}
+                        {% endfor %}
+                    </tbody>
+                </table>
             {% endif %}
         </div>
+
+        <!-- Pending Appointments Waiting for Student/Tutor Approval -->
+        <div class="mt-5">
+            {% if pending_waiting_for_other %}
+                {% if current_user.role == UserRole.TUTOR %}
+                    <h3>Appointments Waiting for the Student's Approval</h3>
+                {% else %}
+                    <h3>Appointments Waiting for the Tutor's Approval</h3>
+                {% endif %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            {% if current_user.role == UserRole.TUTOR %}
+                                <th>Student</th>
+                            {% else %}
+                                <th>Tutor</th>
+                            {% endif %}
+                            <th>Subject</th>
+                            <th>Booked On</th>
+                            <th>Appointment Date</th>
+                            <th>Appointment Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in pending_waiting_for_other %}
+                            {% include '_appointment.html' with context %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if confirmed_appointments %}
+                <h3>Your Confirmed Appointments</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            {% if current_user.role == UserRole.TUTOR %}
+                                <th>Student</th>
+                            {% else %}
+                                <th>Tutor</th>
+                            {% endif %}
+                            <th>Subject</th>
+                            <th>Booked On</th>
+                            <th>Appointment Date</th>
+                            <th>Appointment Time</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in confirmed_appointments %}
+                            {% include '_appointment.html' with context %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    {% else %}
+        {% if not current_user.my_subjects %}
+            <p>You haven't added any classes yet. <a href="{{ url_for('add_subject') }}">Add a class now in order to start using the appointment system.</a></p>
+        {% else %}
+            {% if current_user.role == UserRole.TUTOR %}
+                <p>You haven't been booked for any appointments yet! <br>
+                Try adding to your availability, or <a href="{{ url_for('explore') }}">check the explore page</a> for students that can't find tutors for their classes.</p>
+            {% else %}
+                <p>You haven't booked any appointments yet!<br>
+                <a href="{{ url_for('explore') }}">Try finding a tutor on the EXPLORE page</a>.<br>
+                If no tutors are available for the class you need, <a href="{{ url_for('request_class') }}">try requesting a class</a>.</p>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+    <!-- Requested Subjects Section -->
+    {% if current_user.role == UserRole.STUDENT %}
+    <div class="mt-5">
+        <h2>Your Requested Classes</h2>
+        {% if requested_subjects %}
+            <ul class="list-group">
+                {% for subject in requested_subjects %}
+                    <li class="list-group-item">
+                        {{ subject.name }} - {{ subject.topic }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't requested any classes yet.</p> 
+        {% endif %}
+    </div>
+    {% endif %}
 {% endblock %}
