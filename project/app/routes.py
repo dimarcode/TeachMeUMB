@@ -156,7 +156,10 @@ def appointments():
 @app.route('/add_subject', methods=['GET', 'POST'])
 @login_required
 def add_subject():
-    if request.method == 'POST':
+    form = UserSubjectForm()
+
+    # Handle POST requests from the explore page
+    if request.method == 'POST' and 'subject_id' in request.form:
         subject_id = request.form.get('subject_id')
         subject = Subject.query.get(subject_id)
         if subject:
@@ -170,17 +173,20 @@ def add_subject():
             flash('Invalid subject.', 'danger')
         return redirect(url_for('explore'))
 
-    form = UserSubjectForm()
+    # Handle POST requests from the add_subject.html form
     if form.validate_on_submit():
         subject = Subject.query.get(form.subject.data)
-        if subject in current_user.my_subjects:
-            flash(f'You are already enrolled in {subject.name}', 'warning')
+        if subject:
+            if subject in current_user.my_subjects:
+                flash(f'You already have {subject.name} added to your profile.', 'warning')
+            else:
+                current_user.my_subjects.append(subject)
+                db.session.commit()
+                flash(f'You have successfully enrolled in {subject.name}!', 'success')
         else:
-            current_user.my_subjects.append(subject)
-            db.session.commit()
-            flash(f'You have successfully enrolled in {subject.name}!', 'success')
+            flash('Invalid subject.', 'danger')
         return redirect(url_for('add_subject'))
-    
+
     return render_template('add_subject.html', title='Add Subject', form=form)
 
 
