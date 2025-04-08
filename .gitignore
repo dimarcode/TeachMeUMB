@@ -1,7 +1,6 @@
 # Directories #
 ###############
 
-*bootstrap*
 *.py[cod]
 
 # C extensions
