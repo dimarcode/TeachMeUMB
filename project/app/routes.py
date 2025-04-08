@@ -28,10 +28,14 @@ def index():
     form = BookAppointmentForm()
     student_appointments = list(current_user.student_appointments)
     tutor_appointments = list(current_user.tutor_appointments)
+    requested_subjects = db.session.query(Subject).join(RequestedSubject).filter(
+        RequestedSubject.student_id == current_user.id
+    ).all()
     return render_template(
         'index.html', 
         student_appointments=student_appointments, 
         tutor_appointments=tutor_appointments,
+        requested_subjects=requested_subjects,
         form=form,
     )
 
@@ -353,6 +357,6 @@ def request_class():
             db.session.add(requested_subject)
             db.session.commit()
             flash("Your class request has been submitted successfully!", "success")
-        return redirect(url_for('explore'))
+        return redirect(url_for('index'))
 
     return render_template('request_class.html', title='Request Class', form=form)

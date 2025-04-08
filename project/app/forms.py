@@ -89,13 +89,12 @@ class UpdateAppointmentForm(FlaskForm):
     submit = SubmitField("Update Appointment")
 
 class RequestClassForm(FlaskForm):
-    student_id = HiddenField("Student ID", validators=[DataRequired()])  # Hidden field to store student ID
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Request Class')
 
     def __init__(self, user_id, *args, **kwargs):
         super(RequestClassForm, self).__init__(*args, **kwargs)
-        # Query the subjects associated with the given user_id
+        # Populate the dropdown with subjects associated with the user
         self.subject.choices = [
             (subject.id, f"{subject.name} - {subject.topic}")
             for subject in db.session.query(Subject)
