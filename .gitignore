@@ -1,6 +1,7 @@
 # Directories #
 ###############
 
+*bootstrap*
 *.py[cod]
 
 # C extensions
@@ -38,6 +39,7 @@ nosetests.xml
 .project
 .pydevproject
 
+.env
 venv
 app.db
 microblog.log*

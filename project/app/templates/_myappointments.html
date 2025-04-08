@@ -1,11 +1,14 @@
 <div class="mt-5">
     <table class="table">
-        <h2>Your appointments:</h2>
+        <h2>Your tutoring appointments:</h2>
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Student</th>
-                <th>Tutor</th>
+                {% if current_user.role == UserRole.TUTOR %}
+                    <th>Student</th>
+                {% else %}
+                    <th>Tutor</th>
+                {% endif %}
                 <th>Subject</th>
                 <th>Booked On</th>
                 <th>Appointment Date</th>
@@ -20,8 +23,11 @@
                 {% for appointment in all_appointments %}
                 <tr>
                     <td>{{ appointment.id }}</td>
-                    <td>{{ appointment.student.username }}</td>
-                    <td>{{ appointment.tutor.username }}</td>
+                    {% if current_user.role == UserRole.TUTOR %}
+                        <td>{{ appointment.student.username }}</td>
+                    {% else %}
+                        <td>{{ appointment.tutor.username }}</td>
+                    {% endif %}
                     <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
                     <td>{{ appointment.created_date.strftime('%m-%d-%Y') }}</td>
                     <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }}</td>

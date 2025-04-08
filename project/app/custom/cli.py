@@ -1,5 +1,5 @@
 from app import app
-from app.seed_db import import_subjects_data
+from app.custom.seed_db import import_subjects_data
 
 @app.cli.command("seed-db")
 def seed_db_command():

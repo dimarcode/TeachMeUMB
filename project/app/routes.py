@@ -167,30 +167,49 @@ def remove_subject(subject_id):
 @app.route('/explore')
 @login_required
 def explore():
-    # Find tutors who share subjects with the current user
     form = BookAppointmentForm()
-    tutors = User.query.filter(
-        User.role == UserRole.TUTOR,  # Filter for tutors
-        User.id != current_user.id,   # Exclude current user
-        User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
-    ).all()
-    
-    # Group tutors by subject
-    tutors_by_subject = {}
-    for subject in current_user.my_subjects:
-        subject_tutors = User.query.filter(
-            User.role == UserRole.TUTOR,
-            User.id != current_user.id,
-            User.my_subjects.contains(subject)
+
+    if current_user.role == UserRole.STUDENT:
+        # Find tutors who share subjects with the current user
+        tutors = User.query.filter(
+            User.role == UserRole.TUTOR,  # Filter for tutors
+            User.id != current_user.id,   # Exclude current user
+            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
         ).all()
-        if subject_tutors:
-            tutors_by_subject[subject] = subject_tutors
-    
-    return render_template('explore.html', 
-                          title='Explore', 
-                          tutors=tutors,
-                          form=form,
-                          tutors_by_subject=tutors_by_subject)
+
+        # Group tutors by subject
+        tutors_by_subject = {}
+        for subject in current_user.my_subjects:
+            subject_tutors = User.query.filter(
+                User.role == UserRole.TUTOR,
+                User.id != current_user.id,
+                User.my_subjects.contains(subject)
+            ).all()
+            if subject_tutors:
+                tutors_by_subject[subject] = subject_tutors
+
+        return render_template(
+            'explore.html',
+            title='Explore',
+            tutors=tutors,
+            form=form,
+            tutors_by_subject=tutors_by_subject
+        )
+
+    elif current_user.role == UserRole.TUTOR:
+        # Query all students who have requested classes
+        requested_classes = db.session.query(RequestedSubject, User, Subject).join(
+            User, RequestedSubject.student_id == User.id
+        ).join(
+            Subject, RequestedSubject.subject_id == Subject.id
+        ).all()
+
+        return render_template(
+            'explore.html',
+            title='Explore',
+            requested_classes=requested_classes,
+            form=form
+        )
 
 
 @app.route('/book_appointment', methods=['POST'])

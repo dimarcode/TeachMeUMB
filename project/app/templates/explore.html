@@ -2,53 +2,83 @@
 
 {% block content %}
 <div class="container">
-    <!-- Add the button -->
     {% if current_user.role == UserRole.STUDENT %}
-    <div class="mt-5 text-center">
-        <a href="{{ url_for('request_class') }}" class="btn btn-warning">
-            I can't find any tutors for my class
-        </a>
-    </div>
-    {% endif %}
-    {% if tutors %}
-    <div class="mt-5">
-        <h2>Available Tutors</h2>
-        <p>These tutors are enrolled in subjects you're taking:</p>
-        <div class="row">
-            {% for tutor in tutors %}
-                {% include '_tutorcard.html'  with context %}
-                {% include '_sharedsubject.html' %}
-            {% endfor %}
+        <!-- Student View -->
+        <div class="mt-5 text-center">
+            <a href="{{ url_for('request_class') }}" class="btn btn-warning">
+                I can't find any tutors for my class
+            </a>
         </div>
-    </div>
-    {% endif %}
-    
-    {% if tutors_by_subject %}
-    <div class="mt-5">
-        <h2>Tutors By Subject</h2>
-        <div class="accordion" id="tutorAccordion">
-            {% for subject, subject_tutors in tutors_by_subject.items() %}
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="heading{{ subject.id }}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                            data-bs-target="#collapse{{ subject.id }}" aria-expanded="false" 
-                            aria-controls="collapse{{ subject.id }}">
-                        {{ subject.name }} - {{ subject.topic }} ({{ subject_tutors|length }} tutors)
-                    </button>
-                </h2>
-                <div id="collapse{{ subject.id }}" class="accordion-collapse collapse" 
-                    aria-labelledby="heading{{ subject.id }}" data-bs-parent="#tutorAccordion">
-                    <div class="accordion-body">
-                        <div class="row">
-                            {% for tutor in subject_tutors %}
-                                {% include '_tutorcard.html' with context %}
-                            {% endfor %}
+        {% if tutors %}
+        <div class="mt-5">
+            <h2>Available Tutors</h2>
+            <p>These tutors are enrolled in subjects you're taking:</p>
+            <div class="row">
+                {% for tutor in tutors %}
+                    {% include '_tutorcard.html'  with context %}
+                    {% include '_sharedsubject.html' %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if tutors_by_subject %}
+        <div class="mt-5">
+            <h2>Tutors By Subject</h2>
+            <div class="accordion" id="tutorAccordion">
+                {% for subject, subject_tutors in tutors_by_subject.items() %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ subject.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ subject.id }}" aria-expanded="false" 
+                                aria-controls="collapse{{ subject.id }}">
+                            {{ subject.name }} - {{ subject.topic }} ({{ subject_tutors|length }} tutors)
+                        </button>
+                    </h2>
+                    <div id="collapse{{ subject.id }}" class="accordion-collapse collapse" 
+                        aria-labelledby="heading{{ subject.id }}" data-bs-parent="#tutorAccordion">
+                        <div class="accordion-body">
+                            <div class="row">
+                                {% for tutor in subject_tutors %}
+                                    {% include '_tutorcard.html' with context %}
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
                 </div>
+            {% endfor %}
             </div>
-        {% endfor %}
         </div>
-    </div>
+        {% endif %}
+    {% elif current_user.role == UserRole.TUTOR %}
+        <!-- Tutor View -->
+        <div class="mt-5">
+            <h2>Students Requesting Classes</h2>
+            {% if requested_classes %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student Username</th>
+                            <th>Email</th>
+                            <th>About Me</th>
+                            <th>Requested Class</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for request, student, subject in requested_classes %}
+                        <tr>
+                            <td>{{ student.username }}</td>
+                            <td>{{ student.email }}</td>
+                            <td>{{ student.about_me }}</td>
+                            <td>{{ subject.name }} - {{ subject.topic }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No students have requested classes yet.</p>
+            {% endif %}
+        </div>
     {% endif %}
+</div>
 {% endblock %}
