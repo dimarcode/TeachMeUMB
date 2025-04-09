@@ -117,6 +117,10 @@ class Appointment(db.Model):
         self.status = 'pending'
         self.last_updated_by = user_role
 
+    def get_html_url(self):
+        """Generate an HTML link for the appointment."""
+        return f'<a href="/appointment/{self.id}">{self.subject.name} with {self.tutor.username}</a>'
+
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
                 f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")

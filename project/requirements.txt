@@ -4,6 +4,7 @@ atpublic
 attrs
 Babel
 blinker
+calendar-plus
 certifi
 charset-normalizer
 click

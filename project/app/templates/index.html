@@ -2,6 +2,28 @@
 
 {% block content %}
     <h1>Hi, {{ current_user.username }}!</h1>
+
+    <!-- Calendar Section -->
+    <div id="calendar"></div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth', // Default view
+            themeSystem: 'bootstrap5',  // Use Bootstrap 5 styling
+            events: '/api/events',     // URL to fetch events (see Step 2)
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            }
+        });
+
+        calendar.render();
+    });
+    </script>
+
     {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
         <!-- Pending Appointments That Need Your Approval -->
         <div class="mt-5">

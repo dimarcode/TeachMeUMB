@@ -1,13 +1,13 @@
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 import sqlalchemy as sa
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject
-from app.calendarplus import ModelCalendar
+from app.calendarplus import AppointmentCalendar
 
 
 @app.before_request
@@ -22,20 +22,19 @@ def inject_user_role():
     return dict(UserRole=UserRole)
 
 
+
+
+
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
     form = BookAppointmentForm()
 
-    # Convert query objects to lists and combine them
+    # Other logic for appointments and requested subjects
     all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
-
-    # Separate appointments by status
     pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
     confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
-
-    # Further separate pending appointments
     pending_needs_approval = [
         appointment for appointment in pending_appointments
         if appointment.last_updated_by != current_user.role
@@ -44,11 +43,10 @@ def index():
         appointment for appointment in pending_appointments
         if appointment.last_updated_by == current_user.role
     ]
-
-    # Query requested subjects for the current user
     requested_subjects = db.session.query(Subject).join(RequestedSubject).filter(
         RequestedSubject.student_id == current_user.id
     ).all()
+
 
     return render_template(
         'index.html',
@@ -104,13 +102,52 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 
-@app.route('/send-email', methods=['GET', 'POST'])
+@app.route('/explore')
 @login_required
-def send_email():
-    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
-    msg.body = "This is a test email sent from Flask."
-    mail.send(msg)
-    return "Email sent!"
+def explore():
+    form = BookAppointmentForm()
+
+    if current_user.role == UserRole.STUDENT:
+        # Find tutors who share subjects with the current user
+        tutors = User.query.filter(
+            User.role == UserRole.TUTOR,  # Filter for tutors
+            User.id != current_user.id,   # Exclude current user
+            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
+        ).all()
+
+        # Group tutors by subject
+        tutors_by_subject = {}
+        for subject in current_user.my_subjects:
+            subject_tutors = User.query.filter(
+                User.role == UserRole.TUTOR,
+                User.id != current_user.id,
+                User.my_subjects.contains(subject)
+            ).all()
+            if subject_tutors:
+                tutors_by_subject[subject] = subject_tutors
+
+        return render_template(
+            'explore.html',
+            title='Explore',
+            tutors=tutors,
+            form=form,
+            tutors_by_subject=tutors_by_subject
+        )
+
+    elif current_user.role == UserRole.TUTOR:
+        # Query all students who have requested classes
+        requested_classes = db.session.query(RequestedSubject, User, Subject).join(
+            User, RequestedSubject.student_id == User.id
+        ).join(
+            Subject, RequestedSubject.subject_id == Subject.id
+        ).all()
+
+        return render_template(
+            'explore.html',
+            title='Explore',
+            requested_classes=requested_classes,
+            form=form
+        )
 
 
 @app.route('/user/<username>')
@@ -138,20 +175,16 @@ def edit_profile():
                            form=form)
 
 
-# debug page to make sure subjects are adding and filtering correctly
-@app.route('/subjects', methods=['GET', 'POST'])
+@app.route('/send-email', methods=['GET', 'POST'])
 @login_required
-def subjects():
-    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
-    return render_template('subjects.html', title='Subjects', subjects=subjects)
+def send_email():
+    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
+    msg.body = "This is a test email sent from Flask."
+    mail.send(msg)
+    return "Email sent!"
 
 
-# debug page to make sure appointments are adding and filtering correctly
-@app.route('/appointments', methods=['GET', 'POST'])
-@login_required
-def appointments():
-    appointments = Appointment.query.order_by(Appointment.created_date)
-    return render_template('appointments.html', title='Appointments', appointments=appointments)
+# SUBJECTS SYSTEM
 
 
 @app.route('/add_subject', methods=['GET', 'POST'])
@@ -203,53 +236,38 @@ def remove_subject(subject_id):
         flash(f'You are not enrolled in {subject.name}', 'warning')
     return redirect(request.referrer or url_for('add_subject'))
 
-
-@app.route('/explore')
+@app.route('/request_class', methods=['GET', 'POST'])
 @login_required
-def explore():
-    form = BookAppointmentForm()
+def request_class():
+    if current_user.role != UserRole.STUDENT:
+        flash("Only students can request classes.", "danger")
+        return redirect(url_for('explore'))
 
-    if current_user.role == UserRole.STUDENT:
-        # Find tutors who share subjects with the current user
-        tutors = User.query.filter(
-            User.role == UserRole.TUTOR,  # Filter for tutors
-            User.id != current_user.id,   # Exclude current user
-            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
-        ).all()
+    form = RequestClassForm(user_id=current_user.id)
+    if form.validate_on_submit():
+        # Check if the subject is already requested
+        existing_request = db.session.query(RequestedSubject).filter_by(
+            subject_id=form.subject.data,
+            student_id=current_user.id
+        ).first()
 
-        # Group tutors by subject
-        tutors_by_subject = {}
-        for subject in current_user.my_subjects:
-            subject_tutors = User.query.filter(
-                User.role == UserRole.TUTOR,
-                User.id != current_user.id,
-                User.my_subjects.contains(subject)
-            ).all()
-            if subject_tutors:
-                tutors_by_subject[subject] = subject_tutors
+        if existing_request:
+            flash("You have already requested this class.", "warning")
+        else:
+            # Add a new entry to the RequestedSubject table
+            requested_subject = RequestedSubject(
+                subject_id=form.subject.data,
+                student_id=current_user.id
+            )
+            db.session.add(requested_subject)
+            db.session.commit()
+            flash("Your class request has been submitted successfully!", "success")
+        return redirect(url_for('index'))
 
-        return render_template(
-            'explore.html',
-            title='Explore',
-            tutors=tutors,
-            form=form,
-            tutors_by_subject=tutors_by_subject
-        )
+    return render_template('request_class.html', title='Request Class', form=form)
 
-    elif current_user.role == UserRole.TUTOR:
-        # Query all students who have requested classes
-        requested_classes = db.session.query(RequestedSubject, User, Subject).join(
-            User, RequestedSubject.student_id == User.id
-        ).join(
-            Subject, RequestedSubject.subject_id == Subject.id
-        ).all()
 
-        return render_template(
-            'explore.html',
-            title='Explore',
-            requested_classes=requested_classes,
-            form=form
-        )
+# APPOINTMENTS SYSTEM
 
 
 @app.route('/book_appointment', methods=['POST'])
@@ -390,32 +408,46 @@ def remove_appointment(appointment_id):
     return redirect(request.referrer or url_for('index'))
 
 
-@app.route('/request_class', methods=['GET', 'POST'])
+# DEBUG
+
+
+# debug page to make sure appointments are adding and filtering correctly
+@app.route('/appointments', methods=['GET', 'POST'])
 @login_required
-def request_class():
-    if current_user.role != UserRole.STUDENT:
-        flash("Only students can request classes.", "danger")
-        return redirect(url_for('explore'))
+def appointments():
+    appointments = Appointment.query.order_by(Appointment.created_date)
+    return render_template('appointments.html', title='Appointments', appointments=appointments)
 
-    form = RequestClassForm(user_id=current_user.id)
-    if form.validate_on_submit():
-        # Check if the subject is already requested
-        existing_request = db.session.query(RequestedSubject).filter_by(
-            subject_id=form.subject.data,
-            student_id=current_user.id
-        ).first()
+# debug page to make sure subjects are adding and filtering correctly
+@app.route('/subjects', methods=['GET', 'POST'])
+@login_required
+def subjects():
+    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
+    return render_template('subjects.html', title='Subjects', subjects=subjects)
 
-        if existing_request:
-            flash("You have already requested this class.", "warning")
-        else:
-            # Add a new entry to the RequestedSubject table
-            requested_subject = RequestedSubject(
-                subject_id=form.subject.data,
-                student_id=current_user.id
-            )
-            db.session.add(requested_subject)
-            db.session.commit()
-            flash("Your class request has been submitted successfully!", "success")
-        return redirect(url_for('index'))
 
-    return render_template('request_class.html', title='Request Class', form=form)
+# DEVELOPMENT
+
+@app.route('/api/events')
+@login_required
+def api_events():
+    # Query appointments for the current user
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+    # Convert appointments to FullCalendar's event format
+    events = [
+        {
+            'id': appointment.id,  # Include the appointment ID
+            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
+            'start': f"{appointment.booking_date}T{appointment.booking_time}",  # Combine date and time
+            'end': f"{appointment.booking_date}T{appointment.booking_time}",  # Optional: Add end time if needed
+            'status': appointment.status,  # Include the status of the appointment
+            'url': f"/appointment/{appointment.id}",  # Link to appointment details
+            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",  # Add a description
+        }
+        for appointment in appointments
+    ]
+
+    return jsonify(events)

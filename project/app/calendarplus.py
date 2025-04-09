@@ -1,37 +1,38 @@
 from calendar import HTMLCalendar
+from flask_sqlalchemy import SQLAlchemy
+from app.models import Appointment  # adjust this import to your project structure
+from sqlalchemy import extract
+from markupsafe import Markup
 
-
-class ModelCalendar(HTMLCalendar):
-
-    def __init__(self, year=None, month=None):
+class AppointmentCalendar(HTMLCalendar):
+    def __init__(self, year, month):
+        super().__init__()
         self.year = year
         self.month = month
-        super(ModelCalendar, self).__init__()
 
-    def formatday(self, day, query):
-        objects_per_day = query
-        d = ''
+    def formatday(self, day, appointments):
+        day_appointments = [
+            appt for appt in appointments if appt.booking_date.day == day
+        ]
+        appointments_html = ''.join(f"<li>{appt.get_html_url()}</li>" for appt in day_appointments)
+        return f"<td><span>{day}</span><ul>{appointments_html}</ul></td>" if day != 0 else "<td></td>"
 
-        for object_ in objects_per_day:
-            d += '<li>{0}</li>'.format(object_.get_html_url)
+    def formatweek(self, theweek, appointments):
+        week_html = ''.join(self.formatday(d, appointments) for d, _ in theweek)
+        return f"<tr>{week_html}</tr>"
 
-        if day != 0:
-            return "<td><span>{0}</span><ul> {1} </ul></td>".format(day, d)
-        return '<td></td>'
+    def formatmonth(self, withyear=True):
+        appointments = Appointment.query.filter(
+            extract('year', Appointment.booking_date) == self.year,
+            extract('month', Appointment.booking_date) == self.month
+        ).all()
 
-    def formatweek(self, theweek, query):
-        week = ''
-        for d, weekday in theweek:
-            week += self.formatday(d, query)
-        return '<tr>{}</tr>'.format(week)
-
-    def formatmonth(self, query, withyear=True):
-        objects = query
-        calendar = f'<table class="table table-bordered">\n'
-        calendar += '{}\n'.format(self.formatmonthname(self.year, self.month, withyear=withyear))
-        calendar += '{}\n'.format(self.formatweekheader())
+        cal_html = f'<table class="table table-bordered calendar">\n'
+        cal_html += self.formatmonthname(self.year, self.month, withyear=withyear) + '\n'
+        cal_html += self.formatweekheader() + '\n'
 
         for week in self.monthdays2calendar(self.year, self.month):
-            calendar += '{}\n'.format(self.formatweek(week, objects))
+            cal_html += self.formatweek(week, appointments) + '\n'
 
-        return calendar
+        cal_html += '</table>'
+        return Markup(cal_html)  # Ensures safe rendering in templates
