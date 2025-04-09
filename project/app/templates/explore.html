@@ -8,6 +8,13 @@
             <a href="{{ url_for('request_class') }}" class="btn btn-warning">
                 I can't find any tutors for my class
             </a>
+        <!-- Calendar Section -->
+        <div>
+            <h2>My Calendar</h2>
+            <div class="calendar">
+            {{ calendar_html|safe }}
+        </div>
+    </div>
         </div>
         {% if tutors %}
         <div class="mt-5">
