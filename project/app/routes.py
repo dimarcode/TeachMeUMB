@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject
+from app.calendarplus import ModelCalendar
 
 
 @app.before_request
