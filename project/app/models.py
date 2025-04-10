@@ -1,17 +1,15 @@
 from datetime import datetime, timezone
 from hashlib import md5
+import json
+from time import time
 from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-import jwt
-import json
-from typing import Optional
-from datetime import datetime, timezone
-from time import time
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime
+from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
 from app import db, login
 from enum import Enum
 
@@ -58,6 +56,8 @@ class User(UserMixin, db.Model):
     about_me: so.Mapped[Optional[str]] = so.mapped_column(sa.String(140))
     last_seen: so.Mapped[Optional[datetime]] = so.mapped_column(
         default=lambda: datetime.now(timezone.utc))
+    posts: so.WriteOnlyMapped['Post'] = so.relationship(
+        back_populates='author')
     umb_id: so.Mapped[str] = so.mapped_column(
         sa.String(8), unique=True)
     role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
@@ -75,6 +75,7 @@ class User(UserMixin, db.Model):
                                            backref='student', lazy='dynamic')
     tutor_appointments = db.relationship('Appointment', foreign_keys='Appointment.tutor_id', 
                                          backref='tutor', lazy='dynamic')
+    
     
     messages_sent: so.WriteOnlyMapped['Message'] = so.relationship(
         foreign_keys='Message.sender_id', back_populates='author')
@@ -128,6 +129,20 @@ class User(UserMixin, db.Model):
 @login.user_loader
 def load_user(id):
     return db.session.get(User, int(id))
+
+
+class Post(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    body: so.Mapped[str] = so.mapped_column(sa.String(140))
+    timestamp: so.Mapped[datetime] = so.mapped_column(
+        index=True, default=lambda: datetime.now(timezone.utc))
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
+                                               index=True)
+    
+    author: so.Mapped[User] = so.relationship(back_populates='posts')
+
+    def __repr__(self):
+        return '<Post {}>'.format(self.body)
 
 
 class Message(db.Model):

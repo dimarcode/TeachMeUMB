@@ -1,4 +1,7 @@
     <div class="mt-5">
+        {% if user.id == current_user.id %}
+            <h2>Test Heading</h2>
+        {% endif %}
         <h2>Your Current Classes</h2>
         {% if current_user.my_subjects %}
             <ul class="list-group">

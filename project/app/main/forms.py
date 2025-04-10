@@ -3,7 +3,7 @@ from wtforms import StringField, SubmitField, TextAreaField, SelectField, Hidden
 from wtforms.validators import ValidationError, DataRequired, Length
 import sqlalchemy as sa
 from app import db
-from app.models import User, UserRole, Subject, user_subject
+from app.models import User, Subject, user_subject
 
 
 class TestEmailForm(FlaskForm):
@@ -26,6 +26,13 @@ class EditProfileForm(FlaskForm):
             if user is not None:
                 raise ValidationError('Please use a different username.')
 
+
+class MessageForm(FlaskForm):
+    message = TextAreaField(('Message'), validators=[
+        DataRequired(), Length(min=1, max=140)])
+    submit = SubmitField('Submit')
+
+
 class UserSubjectForm(FlaskForm):
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Add Subject')
@@ -33,7 +40,7 @@ class UserSubjectForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(UserSubjectForm, self).__init__(*args, **kwargs)
         self.subject.choices = [(s.id, f"{s.name} - {s.topic}") for s in Subject.query.order_by(Subject.name).all()]
-    
+
 
 class BookAppointmentForm(FlaskForm):
     tutor_id = HiddenField("Tutor ID", validators=[DataRequired()])  # Hidden field to store tutor ID
@@ -41,10 +48,12 @@ class BookAppointmentForm(FlaskForm):
     booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
     submit = SubmitField("Book Appointment")
 
+
 class UpdateAppointmentForm(FlaskForm):
     booking_date = DateField("New Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("New Time", format='%H:%M', validators=[DataRequired()])
     submit = SubmitField("Update Appointment")
+
 
 class RequestClassForm(FlaskForm):
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])

@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
-from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask import render_template, flash, redirect, url_for, request, jsonify, current_app
 from flask_login import current_user, login_required
 from flask_mail import Message
 import sqlalchemy as sa
 from app import db
 from app.main import bp
-from app.main.forms import EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
-from app.models import User, UserRole, Subject, Appointment, RequestedSubject
+from app.main.forms import EditProfileForm, UserSubjectForm, BookAppointmentForm, \
+UpdateAppointmentForm, RequestClassForm, MessageForm
+from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, Notification
 from app.auth.email import send_password_reset_email
 
 
@@ -85,6 +86,56 @@ def send_email():
     return "Email sent!"
 
 
+@bp.route('/send_message/<recipient>', methods=['GET', 'POST'])
+@login_required
+def send_message(recipient):
+    user = db.first_or_404(sa.select(User).where(User.username == recipient))
+    form = MessageForm()
+    if form.validate_on_submit():
+        msg = Message(author=current_user, recipient=user,
+                      body=form.message.data)
+        db.session.add(msg)
+        user.add_notification('unread_message_count',
+                              user.unread_message_count())
+        db.session.commit()
+        flash('Your message has been sent.')
+        return redirect(url_for('main.user', username=recipient))
+    return render_template('send_message.html', title='Send Message',
+                           form=form, recipient=recipient)
+
+
+@bp.route('/messages')
+@login_required
+def messages():
+    current_user.last_message_read_time = datetime.now(timezone.utc)
+    current_user.add_notification('unread_message_count', 0)
+    db.session.commit()
+    page = request.args.get('page', 1, type=int)
+    query = current_user.messages_received.select().order_by(
+        Message.timestamp.desc())
+    messages = db.paginate(query, page=page,
+                           per_page=current_app.config['POSTS_PER_PAGE'],
+                           error_out=False)
+    next_url = url_for('main.messages', page=messages.next_num) \
+        if messages.has_next else None
+    prev_url = url_for('main.messages', page=messages.prev_num) \
+        if messages.has_prev else None
+    return render_template('messages.html', messages=messages.items,
+                           next_url=next_url, prev_url=prev_url)
+
+
+@bp.route('/notifications')
+@login_required
+def notifications():
+    since = request.args.get('since', 0.0, type=float)
+    query = current_user.notifications.select().where(
+        Notification.timestamp > since).order_by(Notification.timestamp.asc())
+    notifications = db.session.scalars(query)
+    return [{
+        'name': n.name,
+        'data': n.get_data(),
+        'timestamp': n.timestamp
+    } for n in notifications]
 
 # CALENDAR
 
@@ -190,93 +241,6 @@ def edit_profile():
         form.about_me.data = current_user.about_me
     return render_template('edit_profile.html', title='Edit Profile',
                            form=form)
-
-
-
-# SUBJECTS / CLASS REQUEST
-
-@bp.route('/add_subject', methods=['GET', 'POST'])
-@login_required
-def add_subject():
-    form = UserSubjectForm()
-
-    # Handle POST requests from the explore page
-    if request.method == 'POST' and 'subject_id' in request.form:
-        subject_id = request.form.get('subject_id')
-        subject = Subject.query.get(subject_id)
-        if subject:
-            if subject in current_user.my_subjects:
-                flash(f'You already have {subject.name} added to your profile.', 'warning')
-            else:
-                current_user.my_subjects.append(subject)
-                db.session.commit()
-                flash(f'{subject.name} has been added to your profile.', 'success')
-        else:
-            flash('Invalid subject.', 'danger')
-        return redirect(url_for('main.explore'))
-
-    # Handle POST requests from the add_subject.html form
-    if form.validate_on_submit():
-        subject = Subject.query.get(form.subject.data)
-        if subject:
-            if subject in current_user.my_subjects:
-                flash(f'You already have {subject.name} added to your profile.', 'warning')
-            else:
-                current_user.my_subjects.append(subject)
-                db.session.commit()
-                flash(f'You have successfully enrolled in {subject.name}!', 'success')
-        else:
-            flash('Invalid subject.', 'danger')
-        return redirect(url_for('main.add_subject'))
-
-    return render_template('add_subject.html', title='Add Subject', form=form)
-
-
-@bp.route('/remove_subject/<int:subject_id>')
-@login_required
-def remove_subject(subject_id):
-    subject = Subject.query.get_or_404(subject_id)
-    if subject in current_user.my_subjects:
-        current_user.my_subjects.remove(subject)
-        db.session.commit()
-        flash(f'You have successfully unenrolled from {subject.name}!', 'success')
-    else:
-        flash(f'You are not enrolled in {subject.name}', 'warning')
-    return redirect(request.referrer or url_for('main.add_subject'))
-
-@bp.route('/request_class', methods=['GET', 'POST'])
-@login_required
-def request_class():
-    if current_user.role != UserRole.STUDENT:
-        flash("Only students can request classes.", "danger")
-        return redirect(url_for('main.explore'))
-
-    form = RequestClassForm(user_id=current_user.id)
-    if form.validate_on_submit():
-        # Check if the subject is already requested
-        existing_request = db.session.query(RequestedSubject).filter_by(
-            subject_id=form.subject.data,
-            student_id=current_user.id
-        ).first()
-
-        if existing_request:
-            flash("You have already requested this class.", "warning")
-        else:
-            # Add a new entry to the RequestedSubject table
-            requested_subject = RequestedSubject(
-                subject_id=form.subject.data,
-                student_id=current_user.id
-            )
-            db.session.add(requested_subject)
-            db.session.commit()
-            flash("Your class request has been submitted successfully!", "success")
-        return redirect(url_for('main.index'))
-
-    return render_template('request_class.html', title='Request Class', form=form)
-
-
-
-# APPOINTMENTS
 
 
 @bp.route('/book_appointment', methods=['POST'])
@@ -417,8 +381,98 @@ def remove_appointment(appointment_id):
     return redirect(request.referrer or url_for('main.index'))
 
 
+# SUBJECTS / CLASS REQUEST
+
+@bp.route('/add_subject', methods=['GET', 'POST'])
+@login_required
+def add_subject():
+    form = UserSubjectForm()
+
+    # Handle POST requests from the explore page
+    if request.method == 'POST' and 'subject_id' in request.form:
+        subject_id = request.form.get('subject_id')
+        subject = Subject.query.get(subject_id)
+        if subject:
+            if subject in current_user.my_subjects:
+                flash(f'You already have {subject.name} added to your profile.', 'warning')
+            else:
+                current_user.my_subjects.append(subject)
+                db.session.commit()
+                flash(f'{subject.name} has been added to your profile.', 'success')
+        else:
+            flash('Invalid subject.', 'danger')
+        return redirect(url_for('main.explore'))
+
+    # Handle POST requests from the add_subject.html form
+    if form.validate_on_submit():
+        subject = Subject.query.get(form.subject.data)
+        if subject:
+            if subject in current_user.my_subjects:
+                flash(f'You already have {subject.name} added to your profile.', 'warning')
+            else:
+                current_user.my_subjects.append(subject)
+                db.session.commit()
+                flash(f'You have successfully enrolled in {subject.name}!', 'success')
+        else:
+            flash('Invalid subject.', 'danger')
+        return redirect(url_for('main.add_subject'))
+
+    return render_template('add_subject.html', title='Add Subject', form=form)
+
+
+@bp.route('/remove_subject/<int:subject_id>')
+@login_required
+def remove_subject(subject_id):
+    subject = Subject.query.get_or_404(subject_id)
+    if subject in current_user.my_subjects:
+        current_user.my_subjects.remove(subject)
+        db.session.commit()
+        flash(f'You have successfully unenrolled from {subject.name}!', 'success')
+    else:
+        flash(f'You are not enrolled in {subject.name}', 'warning')
+    return redirect(request.referrer or url_for('main.add_subject'))
+
+@bp.route('/request_class', methods=['GET', 'POST'])
+@login_required
+def request_class():
+    if current_user.role != UserRole.STUDENT:
+        flash("Only students can request classes.", "danger")
+        return redirect(url_for('main.explore'))
+
+    form = RequestClassForm(user_id=current_user.id)
+    if form.validate_on_submit():
+        # Check if the subject is already requested
+        existing_request = db.session.query(RequestedSubject).filter_by(
+            subject_id=form.subject.data,
+            student_id=current_user.id
+        ).first()
+
+        if existing_request:
+            flash("You have already requested this class.", "warning")
+        else:
+            # Add a new entry to the RequestedSubject table
+            requested_subject = RequestedSubject(
+                subject_id=form.subject.data,
+                student_id=current_user.id
+            )
+            db.session.add(requested_subject)
+            db.session.commit()
+            flash("Your class request has been submitted successfully!", "success")
+        return redirect(url_for('main.index'))
+
+    return render_template('request_class.html', title='Request Class', form=form)
+
 
 # DEBUG
+
+
+# debug page to make sure subjects are adding and filtering correctly
+@bp.route('/subjects/<username>', methods=['GET', 'POST'])
+@login_required
+def subjects(username):
+    user = db.first_or_404(sa.select(User).where(User.username == username))
+    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
+    return render_template('subjects.html', title='Subjects', subjects=subjects, user=user)
 
 
 # debug page to make sure appointments are adding and filtering correctly
@@ -427,14 +481,6 @@ def remove_appointment(appointment_id):
 def appointments():
     appointments = Appointment.query.order_by(Appointment.created_date)
     return render_template('appointments.html', title='Appointments', appointments=appointments)
-
-# debug page to make sure subjects are adding and filtering correctly
-@bp.route('/subjects', methods=['GET', 'POST'])
-@login_required
-def subjects():
-    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
-    return render_template('subjects.html', title='Subjects', subjects=subjects)
-
 
 # DEVELOPMENT
 
