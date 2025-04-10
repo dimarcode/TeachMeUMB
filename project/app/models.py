@@ -4,13 +4,15 @@ from typing import Optional
 import sqlalchemy as sa
 import sqlalchemy.orm as so
 import jwt
+import json
+from typing import Optional
 from datetime import datetime, timezone
 from time import time
 from sqlalchemy.sql import func
 from sqlalchemy import Column, Integer, DateTime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import app, db, login
+from app import db, login
 from enum import Enum
 
 user_subject = db.Table(
@@ -60,19 +62,26 @@ class User(UserMixin, db.Model):
         sa.String(8), unique=True)
     role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
                                                  default=UserRole.STUDENT)
-    
+    last_message_read_time: so.Mapped[Optional[datetime]]
+
     # defines relationship to user_subjects table, and therefore subjects table
     my_subjects = so.relationship("Subject", secondary=user_subject, 
                                   backref="subject_user")
-
     user_requested_subjects = db.relationship('RequestedSubject', foreign_keys='RequestedSubject.student_id',
                                             backref='student_requester', lazy='dynamic')
-
+    
     # defines relationship to appointments table for users with either student or tutor role
     student_appointments = db.relationship('Appointment', foreign_keys='Appointment.student_id', 
                                            backref='student', lazy='dynamic')
     tutor_appointments = db.relationship('Appointment', foreign_keys='Appointment.tutor_id', 
                                          backref='tutor', lazy='dynamic')
+    
+    messages_sent: so.WriteOnlyMapped['Message'] = so.relationship(
+        foreign_keys='Message.sender_id', back_populates='author')
+    messages_received: so.WriteOnlyMapped['Message'] = so.relationship(
+        foreign_keys='Message.recipient_id', back_populates='recipient')
+    notifications: so.WriteOnlyMapped['Notification'] = so.relationship(
+        back_populates='user')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -100,6 +109,60 @@ class User(UserMixin, db.Model):
         except:
             return
         return db.session.get(User, id)
+    
+    def unread_message_count(self):
+        last_read_time = self.last_message_read_time or datetime(1900, 1, 1)
+        query = sa.select(Message).where(Message.recipient == self,
+                                         Message.timestamp > last_read_time)
+        return db.session.scalar(sa.select(sa.func.count()).select_from(
+            query.subquery()))
+
+    def add_notification(self, name, data):
+        db.session.execute(self.notifications.delete().where(
+            Notification.name == name))
+        n = Notification(name=name, payload_json=json.dumps(data), user=self)
+        db.session.add(n)
+        return n
+
+
+@login.user_loader
+def load_user(id):
+    return db.session.get(User, int(id))
+
+
+class Message(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    sender_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
+                                                 index=True)
+    recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
+                                                    index=True)
+    body: so.Mapped[str] = so.mapped_column(sa.String(140))
+    timestamp: so.Mapped[datetime] = so.mapped_column(
+        index=True, default=lambda: datetime.now(timezone.utc))
+    
+    author: so.Mapped[User] = so.relationship(
+        foreign_keys='Message.sender_id',
+        back_populates='messages_sent')
+    recipient: so.Mapped[User] = so.relationship(
+        foreign_keys='Message.recipient_id',
+        back_populates='messages_received')
+
+    def __repr__(self):
+        return '<Message {}>'.format(self.body)
+
+
+class Notification(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(128), index=True)
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id),
+                                               index=True)
+    timestamp: so.Mapped[float] = so.mapped_column(index=True, default=time)
+    payload_json: so.Mapped[str] = so.mapped_column(sa.Text)
+
+    user: so.Mapped[User] = so.relationship(back_populates='notifications')
+
+    def get_data(self):
+        return json.loads(str(self.payload_json))
 
 
 class Appointment(db.Model):
@@ -140,8 +203,3 @@ class Appointment(db.Model):
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
                 f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")
-
-
-@login.user_loader
-def load_user(id):
-    return db.session.get(User, int(id))

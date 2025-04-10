@@ -6,7 +6,7 @@
 <!-- Student View -->    
     {% if current_user.role == UserRole.STUDENT %}
         <div class="mt-5 text-center">
-            <a href="{{ url_for('request_class') }}" class="btn btn-warning">
+            <a href="{{ url_for('main.request_class') }}" class="btn btn-warning">
                 I can't find any tutors for my class
             </a>
         </div>
@@ -77,7 +77,7 @@
                         <td>
                             <!-- Check if the tutor already has the class -->
                             {% if subject not in current_user.my_subjects %}
-                                <form action="{{ url_for('add_subject') }}" method="post" style="display:inline;">
+                                <form action="{{ url_for('main.add_subject') }}" method="post" style="display:inline;">
                                     {{ form.hidden_tag() }}  <!-- Include CSRF token -->
                                     <input type="hidden" name="subject_id" value="{{ subject.id }}">
                                     <button type="submit" class="btn btn-success btn-sm">Add Class</button>

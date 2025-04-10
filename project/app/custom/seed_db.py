@@ -1,3 +1,4 @@
+from flask import current_app
 import csv
 from datetime import datetime, timezone, date
 from pathlib import Path
@@ -8,17 +9,17 @@ import sys
 # Add the parent directory to sys.path to make app importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import app, db
+from app import db
 from app.models import Subject
 
 def import_subjects_data():
-    with app.app_context():
+    with current_app.app_context():
         # Clear existing data
         db.session.query(Subject).delete()
         db.session.commit()
         print("Subjects table cleared.")
 
-        data_file = Path(app.root_path) / 'custom' / 'data' / 'classes.csv'
+        data_file = Path(current_app.root_path) / 'custom' / 'data' / 'classes.csv'
         print(f"Looking for data file at: {data_file}")
         
         if not data_file.exists():

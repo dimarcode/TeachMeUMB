@@ -15,7 +15,7 @@
             {% endif %}
             
             <!-- Form for booking appointment -->
-            <form action="{{ url_for('book_appointment') }}" method="post">
+            <form action="{{ url_for('main.book_appointment') }}" method="post">
                 {{ form.hidden_tag() }}  <!-- Include CSRF token -->
 
                 <input type="hidden" name="tutor_id" value="{{ tutor.id }}">

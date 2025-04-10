@@ -29,7 +29,7 @@
                 <td>{{ appointment.status }}</td>
                 <td>{{ appointment.last_updated_by }}</td>
                 <td>
-                    <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
+                    <a href="{{ url_for('main.appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
                 </td>
             </tr>
             {% endfor %}

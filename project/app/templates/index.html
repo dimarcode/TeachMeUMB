@@ -50,7 +50,6 @@
                             <th>Subject</th>
                             <th>Booked On</th>
                             <th>Appointment Date</th>
-                            <th>Appointment Time</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -84,7 +83,6 @@
                             <th>Subject</th>
                             <th>Booked On</th>
                             <th>Appointment Date</th>
-                            <th>Appointment Time</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -113,7 +111,6 @@
                             <th>Subject</th>
                             <th>Booked On</th>
                             <th>Appointment Date</th>
-                            <th>Appointment Time</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -128,15 +125,15 @@
         </div>
     {% else %}
         {% if not current_user.my_subjects %}
-            <p>You haven't added any classes yet. <a href="{{ url_for('add_subject') }}">Add a class now in order to start using the appointment system.</a></p>
+            <p>You haven't added any classes yet. <a href="{{ url_for('main.add_subject') }}">Add a class now in order to start using the appointment system.</a></p>
         {% else %}
             {% if current_user.role == UserRole.TUTOR %}
                 <p>You haven't been booked for any appointments yet! <br>
-                Try adding to your availability, or <a href="{{ url_for('explore') }}">check the explore page</a> for students that can't find tutors for their classes.</p>
+                Try adding to your availability, or <a href="{{ url_for('main.explore') }}">check the explore page</a> for students that can't find tutors for their classes.</p>
             {% else %}
                 <p>You haven't booked any appointments yet!<br>
-                <a href="{{ url_for('explore') }}">Try finding a tutor on the explore page</a>.<br>
-                If no tutors are available for the class you need, <a href="{{ url_for('request_class') }}">try requesting a class</a>.</p>
+                <a href="{{ url_for('main.explore') }}">Try finding a tutor on the explore page</a>.<br>
+                If no tutors are available for the class you need, <a href="{{ url_for('main.request_class') }}">try requesting a class</a>.</p>
             {% endif %}
         {% endif %}
     {% endif %}
