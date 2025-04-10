@@ -22,16 +22,34 @@ def inject_user_role():
     return dict(UserRole=UserRole)
 
 
-
-
-
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
     form = BookAppointmentForm()
 
+    # Query appointments for the current user
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+    # Convert appointments to FullCalendar's event format
+    events = [
+        {
+            'id': appointment.id,
+            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
+            'start': f"{appointment.booking_date}T{appointment.booking_time}",
+            'end': f"{appointment.booking_date}T{appointment.booking_time}",
+            'status': appointment.status,
+            'url': f"/appointment/{appointment.id}",
+            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
+        }
+        for appointment in appointments
+    ]
+
     # Other logic for appointments and requested subjects
+
+
     all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
     pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
     confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
@@ -47,7 +65,6 @@ def index():
         RequestedSubject.student_id == current_user.id
     ).all()
 
-
     return render_template(
         'index.html',
         pending_needs_approval=pending_needs_approval,
@@ -55,6 +72,7 @@ def index():
         confirmed_appointments=confirmed_appointments,
         requested_subjects=requested_subjects,
         form=form,
+        events=events or [],
     )
 
 
