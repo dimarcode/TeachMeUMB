@@ -18,7 +18,7 @@ def import_subjects_data():
         db.session.commit()
         print("Subjects table cleared.")
 
-        data_file = Path(app.root_path) / 'data' / 'classes.csv'
+        data_file = Path(app.root_path) / 'custom' / 'data' / 'classes.csv'
         print(f"Looking for data file at: {data_file}")
         
         if not data_file.exists():

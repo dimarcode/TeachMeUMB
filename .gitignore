@@ -2,7 +2,7 @@
 ###############
 
 *.py[cod]
-
+.vscode
 # C extensions
 *.so
 

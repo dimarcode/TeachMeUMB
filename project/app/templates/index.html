@@ -1,7 +1,38 @@
 {% extends "base.html" %}
-
 {% block content %}
+    
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+
+            // Pass events from the server-side to FullCalendar
+            var events = {{ events|tojson|safe }} || []; // Fallback to an empty array if events is None
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth', // Default view
+                themeSystem: 'bootstrap5',  // Use Bootstrap 5 styling
+                height: 650,
+                events: events,             // Use the embedded events
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                },
+                eventClick: function(info) {
+                    // Display event details in a popup or modal
+                    alert(info.event.extendedProps.description);
+                }
+            });
+
+            calendar.render();
+        });
+    </script>
     <h1>Hi, {{ current_user.username }}!</h1>
+
+    <!-- Calendar Section -->
+    <div id="calendar"></div>
+
     {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
         <!-- Pending Appointments That Need Your Approval -->
         <div class="mt-5">

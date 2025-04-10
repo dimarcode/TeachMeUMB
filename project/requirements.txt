@@ -4,6 +4,7 @@ atpublic
 attrs
 Babel
 blinker
+calendar-plus
 certifi
 charset-normalizer
 click
@@ -14,6 +15,7 @@ flask-babel
 Flask-Login
 Flask-Mail
 Flask-Migrate
+Flask-Modals
 Flask-Moment
 Flask-SQLAlchemy
 Flask-WTF
