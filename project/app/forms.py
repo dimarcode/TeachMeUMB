@@ -15,6 +15,16 @@ class LoginForm(FlaskForm):
 class TestEmailForm(FlaskForm):
     submit = SubmitField('Send Test Email')
 
+class ResetPasswordRequestForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('Password', validators=[DataRequired()])
+    password2 = PasswordField(
+        'Repeat Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Request Password Reset')
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     umb_id = StringField(

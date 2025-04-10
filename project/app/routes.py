@@ -5,9 +5,10 @@ from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 import sqlalchemy as sa
 from app import app, db, mail
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
+BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, ResetPasswordRequestForm, ResetPasswordForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject
-from app.calendarplus import AppointmentCalendar
+from app.email import send_password_reset_email
 
 
 @app.before_request
@@ -76,6 +77,10 @@ def index():
     )
 
 
+
+# LOGIN / LOGOUT / REGISTER
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -118,6 +123,81 @@ def register():
         flash('Congratulations, you are now a registered user!')
         return redirect(url_for('login'))
     return render_template('register.html', title='Register', form=form)
+
+
+
+# EMAIL SYSTEM
+
+@app.route('/send-email', methods=['GET', 'POST'])
+@login_required
+def send_email():
+    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
+    msg.body = "This is a test email sent from Flask."
+    mail.send(msg)
+    return "Email sent!"
+
+
+@app.route('/reset_password_request', methods=['GET', 'POST'])
+def reset_password_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = ResetPasswordRequestForm()
+    if form.validate_on_submit():
+        user = db.session.scalar(
+            sa.select(User).where(User.email == form.email.data))
+        if user:
+            send_password_reset_email(user)
+        flash('Check your email for the instructions to reset your password')
+        return redirect(url_for('login'))
+    return render_template('reset_password_request.html',
+                           title='Reset Password', form=form)
+
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    user = User.verify_reset_password_token(token)
+    if not user:
+        return redirect(url_for('index'))
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Your password has been reset.')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', form=form)
+
+
+
+# CALENDAR
+
+@app.route('/api/events')
+@login_required
+def api_events():
+    # Query appointments for the current user
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+    # Convert appointments to FullCalendar's event format
+    events = [
+        {
+            'id': appointment.id,  # Include the appointment ID
+            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
+            'start': f"{appointment.booking_date}T{appointment.booking_time}",  # Combine date and time
+            'end': f"{appointment.booking_date}T{appointment.booking_time}",  # Optional: Add end time if needed
+            'status': appointment.status,  # Include the status of the appointment
+            'url': f"/appointment/{appointment.id}",  # Link to appointment details
+            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",  # Add a description
+        }
+        for appointment in appointments
+    ]
+    return jsonify(events)
+
+
+
+# HOME / EXPLORE PAGE
 
 
 @app.route('/explore')
@@ -168,6 +248,9 @@ def explore():
         )
 
 
+# USER PROFILE
+
+
 @app.route('/user/<username>')
 @login_required
 def user(username):
@@ -193,17 +276,8 @@ def edit_profile():
                            form=form)
 
 
-@app.route('/send-email', methods=['GET', 'POST'])
-@login_required
-def send_email():
-    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
-    msg.body = "This is a test email sent from Flask."
-    mail.send(msg)
-    return "Email sent!"
 
-
-# SUBJECTS SYSTEM
-
+# SUBJECTS / CLASS REQUEST
 
 @app.route('/add_subject', methods=['GET', 'POST'])
 @login_required
@@ -285,7 +359,8 @@ def request_class():
     return render_template('request_class.html', title='Request Class', form=form)
 
 
-# APPOINTMENTS SYSTEM
+
+# APPOINTMENTS
 
 
 @app.route('/book_appointment', methods=['POST'])
@@ -426,6 +501,7 @@ def remove_appointment(appointment_id):
     return redirect(request.referrer or url_for('index'))
 
 
+
 # DEBUG
 
 
@@ -446,26 +522,3 @@ def subjects():
 
 # DEVELOPMENT
 
-@app.route('/api/events')
-@login_required
-def api_events():
-    # Query appointments for the current user
-    appointments = Appointment.query.filter(
-        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
-    ).all()
-
-    # Convert appointments to FullCalendar's event format
-    events = [
-        {
-            'id': appointment.id,  # Include the appointment ID
-            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': f"{appointment.booking_date}T{appointment.booking_time}",  # Combine date and time
-            'end': f"{appointment.booking_date}T{appointment.booking_time}",  # Optional: Add end time if needed
-            'status': appointment.status,  # Include the status of the appointment
-            'url': f"/appointment/{appointment.id}",  # Link to appointment details
-            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",  # Add a description
-        }
-        for appointment in appointments
-    ]
-
-    return jsonify(events)
