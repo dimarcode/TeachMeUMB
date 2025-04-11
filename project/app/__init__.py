@@ -80,9 +80,9 @@ def create_app(config_class=Config):
         app.logger.setLevel(logging.INFO)
         app.logger.info('Microblog startup')
 
-    with app.app_context():
-        from app.custom.cli import seed_db_command
-        app.cli.add_command(seed_db_command, name='seed-db')
+    ## Register CLI commands
+    from app.custom.cli import register_cli_commands
+    register_cli_commands(app)
 
     return app
 

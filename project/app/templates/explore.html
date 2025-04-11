@@ -17,7 +17,26 @@
             <p>These tutors are enrolled in subjects you're taking:</p>
             <div class="row">
                 {% for tutor in tutors %}
-                    {% include '_tutorcard.html'  with context %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                    <div>
+                                        <h3 class="card-title mb-0"><img src="{{ tutor.avatar(36) }}" class="rounded-circle me-3" alt="Profile Picture">
+                                        </h3>
+                                        <a href="{{ url_for('main.user', username=tutor.username) }}">{{ tutor.username }}</a>
+                                    </div>
+                            </div>
+                            <div class="card-body">
+                                {% if tutor.about_me %}
+                                    <p>{{ tutor.about_me }}</p>
+                                {% else %}
+                                    <p><em>No bio available</em></p>
+                                {% endif %}
+                                <!-- Modal and form for booking appointment -->
+                                {% include '_bookappointment.html' %}
+                            </div>
+                        </div>
+                    </div>
                     {% include '_sharedsubject.html' %}
                 {% endfor %}
             </div>
@@ -42,7 +61,26 @@
                         <div class="accordion-body">
                             <div class="row">
                                 {% for tutor in subject_tutors %}
-                                    {% include '_tutorcard.html' with context %}
+                                    <div class="col-md-4 mb-4">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <div class="d-flex align-items-center">
+                                                    <div>
+                                                        <h3 class="card-title mb-0"><img src="{{ tutor.avatar(36) }}" class="rounded-circle me-3" alt="Profile Picture">{{ tutor.username }}</h3>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="card-body">
+                                                {% if tutor.about_me %}
+                                                    <p>{{ tutor.about_me }}</p>
+                                                {% else %}
+                                                    <p><em>No bio available</em></p>
+                                                {% endif %}
+                                                <!-- Modal and form for booking appointment -->
+                                                {% include '_bookappointment.html' %}
+                                            </div>
+                                        </div>
+                                    </div>
                                 {% endfor %}
                             </div>
                         </div>

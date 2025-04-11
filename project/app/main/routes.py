@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify, current_app
 from flask_login import current_user, login_required
@@ -51,9 +51,12 @@ def index():
 
     # Other logic for appointments and requested subjects
 
-    all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
-    pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
-    confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
+    all_appointments = list(current_user.student_appointments) + \
+    list(current_user.tutor_appointments)
+    pending_appointments = [appointment for appointment \
+                            in all_appointments if appointment.status == 'pending']
+    confirmed_appointments = [appointment for appointment \
+                              in all_appointments if appointment.status == 'confirmed']
     pending_needs_approval = [
         appointment for appointment in pending_appointments
         if appointment.last_updated_by != current_user.role
@@ -171,7 +174,7 @@ def api_events():
 @login_required
 def explore():
     form = BookAppointmentForm()
-
+    current_date = date.today().strftime('%Y-%m-%d')  # Format as YYYY-MM-DD
     if current_user.role == UserRole.STUDENT:
         # Find tutors who share subjects with the current user
         tutors = User.query.filter(
@@ -211,7 +214,8 @@ def explore():
             'explore.html',
             title='Explore',
             requested_classes=requested_classes,
-            form=form
+            form=form,
+            current_date=current_date
         )
 
 
@@ -258,6 +262,8 @@ def book_appointment():
     try:
         tutor_id = int(tutor_id)
         subject_id = int(subject_id)
+
+        # Parse booking_date and booking_time separately
         booking_date = datetime.strptime(booking_date_str, '%Y-%m-%d').date()
         booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
 
@@ -281,15 +287,16 @@ def book_appointment():
             student_id=current_user.id,
             tutor_id=tutor.id,
             subject_id=subject.id,
-            booking_date=booking_date,
-            booking_time=booking_time,
+            booking_date=booking_date,  # Store the date separately
+            booking_time=booking_time,  # Store the time separately
             last_updated_by=current_user.role
         )
 
         db.session.add(appointment)
         db.session.commit()
 
-        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}.", "success")
+        flash(f"Appointment booked with {tutor.username} for {subject.name} \
+              on {booking_date} at {booking_time}.", "success")
     except ValueError as e:
         flash(f"Invalid date/time format: {str(e)}", "danger")
     except Exception as e:
@@ -354,7 +361,8 @@ def appointment_update(appointment_id):
     form.booking_date.data = appointment.booking_date
     form.booking_time.data = appointment.booking_time
 
-    return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
+    return render_template('appointment_update.html', \
+                           title='Update Appointment', form=form, appointment=appointment)
 
 
 @bp.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
@@ -387,23 +395,7 @@ def remove_appointment(appointment_id):
 @login_required
 def add_subject():
     form = UserSubjectForm()
-
-    # Handle POST requests from the explore page
-    if request.method == 'POST' and 'subject_id' in request.form:
-        subject_id = request.form.get('subject_id')
-        subject = Subject.query.get(subject_id)
-        if subject:
-            if subject in current_user.my_subjects:
-                flash(f'You already have {subject.name} added to your profile.', 'warning')
-            else:
-                current_user.my_subjects.append(subject)
-                db.session.commit()
-                flash(f'{subject.name} has been added to your profile.', 'success')
-        else:
-            flash('Invalid subject.', 'danger')
-        return redirect(url_for('main.explore'))
-
-    # Handle POST requests from the add_subject.html form
+    subjects = current_user.my_subjects
     if form.validate_on_submit():
         subject = Subject.query.get(form.subject.data)
         if subject:
@@ -417,7 +409,7 @@ def add_subject():
             flash('Invalid subject.', 'danger')
         return redirect(url_for('main.add_subject'))
 
-    return render_template('add_subject.html', title='Add Subject', form=form)
+    return render_template('add_subject.html', title='Add Subject',subjects=subjects, form=form)
 
 
 @bp.route('/remove_subject/<int:subject_id>')

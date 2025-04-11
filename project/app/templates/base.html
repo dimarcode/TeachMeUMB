@@ -10,6 +10,7 @@
     {% endif %}
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css' rel="stylesheet" integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
     <link href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 <style>
     body {
         padding-bottom: 56px;
@@ -107,9 +108,68 @@
         }, 10000);
         }
         document.addEventListener('DOMContentLoaded', initialize_notifications);
-        {% endif %}
-      
-      </script>
+        {% endif %} >
     </script>
+    <script>
+        const myModal = document.getElementById('myModal')
+        const myInput = document.getElementById('myInput')
+
+        myModal.addEventListener('shown.bs.modal', () => {
+        myInput.focus()
+        })
+
+    </script>
+    <script>
+        eventClick: function(info) {
+            // Prevent default behavior (e.g., navigation)
+            info.jsEvent.preventDefault();
+
+            // Populate the modal with event details
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalFooter = document.getElementById('modalFooter');
+
+            modalTitle.textContent = info.event.title; // Set the modal title
+            modalBody.textContent = info.event.extendedProps.description || 'No additional details available.'; // Set the modal body content
+
+            // Optional: Add custom actions to the modal footer
+            modalFooter.innerHTML = `
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            `;
+
+            // Show the modal
+            const myModal = new bootstrap.Modal(document.getElementById('eventModal'));
+            myModal.show();
+        }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('.needs-validation');
+            const bookingDateInput = document.getElementById('booking_date');
+
+            form.addEventListener('submit', function (event) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Remove time portion for comparison
+            const selectedDate = new Date(bookingDateInput.value);
+
+            // Check if the selected date is in the past
+            if (selectedDate < today) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                // Add Bootstrap's validation feedback for invalid input
+                bookingDateInput.classList.add('is-invalid');
+                bookingDateInput.nextElementSibling.textContent = 'Please select a valid date in the future.';
+            } else {
+                // Remove invalid feedback if the date is valid
+                bookingDateInput.classList.remove('is-invalid');
+                bookingDateInput.classList.add('is-valid');
+                bookingDateInput.nextElementSibling.textContent = ''; // Clear any previous error message
+            }
+
+            form.classList.add('was-validated');
+            });
+        });
+        </script>
 </body>
 </html>

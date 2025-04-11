@@ -1,25 +1,24 @@
 {% extends "base.html" %}
+{% import "bootstrap_wtf.html" as wtf %}
 
 {% block content %}
-<div class="container">
+<div class="container mt-3">
     <h1>Add Subject</h1>
-    <div class="row">
-        <div class="col-md-6">
-            <form action="" method="post" novalidate>
-                {{ form.hidden_tag() }}
-                <div class="form-group">
-                    {{ form.subject.label }}
-                    {{ form.subject(class="form-control") }}
-                    {% for error in form.subject.errors %}
-                    <span class="text-danger">{{ error }}</span>
-                    {% endfor %}
-                </div>
-                <div class="form-group mt-3">
-                    {{ form.submit(class="btn btn-primary") }}
-                </div>
-            </form>
-        </div>
-    </div>
-    {% include '_currentclasses.html' %}
+    {{ wtf.quick_form(form) }}
+</div>
+<div class="container mt-3">
+    {% if subjects %}
+        <h2>Current Subjects</h2>
+        <ul>
+            {% for subject in subjects %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ subject.name }} - {{ subject.topic }}
+                    <a href="{{ url_for('main.remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
+                </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+                <p>You haven't enrolled in any subjects yet.</p>
+    {% endif %}
 </div>
 {% endblock %}
