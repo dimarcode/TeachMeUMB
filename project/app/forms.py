@@ -4,7 +4,7 @@ from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Le
 import sqlalchemy as sa
 from app import db
 from app.models import User, UserRole, Subject, user_subject
-
+import datetime
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -103,3 +103,14 @@ class RequestClassForm(FlaskForm):
             .order_by(Subject.name)
             .all()
         ]
+
+
+
+TIME_CHOICES = [(f"{hour:02}:00", f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}") for hour in range(6, 20)]
+
+
+class DailyAvailabilityForm(FlaskForm):
+    date = DateField('Date', format='%Y-%m-%d', validators=[DataRequired()])
+    start_time = SelectField('Start Time', choices=TIME_CHOICES, validators=[DataRequired()])
+    end_time = SelectField('End Time', choices=TIME_CHOICES, validators=[DataRequired()])
+    submit = SubmitField('Submit')

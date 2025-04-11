@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, time
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 import sqlalchemy as sa
 from app import app, db, mail
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
-from app.models import User, UserRole, Subject, Appointment, RequestedSubject
-
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, DailyAvailabilityForm
+from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Availability
+from sqlalchemy import func
 
 @app.before_request
 def before_request():
@@ -66,7 +66,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = db.session.scalar(
-            sa.select(User).where(User.username == form.username.data))
+            sa.select(User).where(func.lower(User.username) == form.username.data.lower()))
         if user is None or not user.check_password(form.password.data):
             flash('Invalid username or password')
             return redirect(url_for('login'))
@@ -203,52 +203,30 @@ def remove_subject(subject_id):
     return redirect(request.referrer or url_for('add_subject'))
 
 
-@app.route('/explore')
+@app.route('/explore', methods=['GET', 'POST'])
 @login_required
 def explore():
-    form = BookAppointmentForm()
+    subject_filter = request.args.get('subject', type=int)
+    subjects = Subject.query.order_by(Subject.name).all()
 
-    if current_user.role == UserRole.STUDENT:
-        # Find tutors who share subjects with the current user
-        tutors = User.query.filter(
-            User.role == UserRole.TUTOR,  # Filter for tutors
-            User.id != current_user.id,   # Exclude current user
-            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
-        ).all()
-
-        # Group tutors by subject
-        tutors_by_subject = {}
-        for subject in current_user.my_subjects:
-            subject_tutors = User.query.filter(
-                User.role == UserRole.TUTOR,
-                User.id != current_user.id,
-                User.my_subjects.contains(subject)
-            ).all()
-            if subject_tutors:
-                tutors_by_subject[subject] = subject_tutors
-
-        return render_template(
-            'explore.html',
-            title='Explore',
-            tutors=tutors,
-            form=form,
-            tutors_by_subject=tutors_by_subject
+    if subject_filter:
+        tutors = (
+            db.session.query(User)
+            .join(User.my_subjects)
+            .filter(User.role == UserRole.TUTOR, Subject.id == subject_filter)
+            .all()
         )
+    else:
+        tutors = User.query.filter_by(role=UserRole.TUTOR).all()
+    tutors = User.query.filter_by(role=UserRole.TUTOR).all()
 
-    elif current_user.role == UserRole.TUTOR:
-        # Query all students who have requested classes
-        requested_classes = db.session.query(RequestedSubject, User, Subject).join(
-            User, RequestedSubject.student_id == User.id
-        ).join(
-            Subject, RequestedSubject.subject_id == Subject.id
-        ).all()
+    for tutor in tutors:
+        tutor.availability_slots = Availability.query.filter_by(
+            tutor_id=tutor.id,
+            is_booked=False
+        ).order_by(Availability.date, Availability.time).limit(3).all()
 
-        return render_template(
-            'explore.html',
-            title='Explore',
-            requested_classes=requested_classes,
-            form=form
-        )
+    return render_template('explore.html', tutors=tutors, subjects=subjects, selected_subject=subject_filter)
 
 
 @app.route('/book_appointment', methods=['POST'])
@@ -418,3 +396,98 @@ def request_class():
         return redirect(url_for('index'))
 
     return render_template('request_class.html', title='Request Class', form=form)
+
+
+
+
+@app.route('/tutor/add_availability', methods=['GET', 'POST'])
+@login_required
+def add_availability():
+    if current_user.role != UserRole.TUTOR:
+        abort(403)
+
+    form = DailyAvailabilityForm()
+    created_slots = []
+
+    if form.validate_on_submit():
+        selected_date = form.date.data
+        start_time = datetime.strptime(form.start_time.data, "%H:%M").time()
+        end_time = datetime.strptime(form.end_time.data, "%H:%M").time()
+
+        slot_time = datetime.combine(selected_date, start_time)
+        end_datetime = datetime.combine(selected_date, end_time)
+
+        while slot_time < end_datetime:
+            new_slot = Availability(
+                tutor_id=current_user.id,
+                date=slot_time.date(),
+                time=slot_time.time(),
+                is_booked=False
+            )
+            db.session.add(new_slot)
+            created_slots.append(new_slot)
+            slot_time += timedelta(hours=1)
+
+        db.session.commit()
+        flash(f"{len(created_slots)} time slots added.")
+        return redirect(url_for('add_availability'))
+
+    existing_slots = Availability.query.filter_by(
+        tutor_id=current_user.id
+    ).order_by(Availability.date, Availability.time).all()
+
+    return render_template('add_availability.html', form=form, slots=existing_slots)
+
+
+
+@app.route('/tutor/<int:tutor_id>/availability', methods=['GET', 'POST'])
+@login_required
+def tutor_availability(tutor_id):
+    tutor = User.query.get_or_404(tutor_id)
+    available_slots = Availability.query.filter_by(tutor_id=tutor.id, is_booked=False).order_by(Availability.date, Availability.time).all()
+    return render_template('tutor_availability.html', tutor=tutor, slots=available_slots)
+
+@app.route('/book/<int:slot_id>', methods=['GET'])
+@login_required
+def book_slot(slot_id):
+    slot = Availability.query.get_or_404(slot_id)
+
+    if slot.is_booked:
+        flash("Slot already booked.")
+        return redirect(url_for('explore'))
+
+    appointment = Appointment(
+        student_id=current_user.id,
+        tutor_id=slot.tutor_id,
+        booking_date=slot.date,
+        booking_time=slot.time,
+        last_updated_by=UserRole.STUDENT,
+        status='pending'
+    )
+    slot.is_booked = True
+    db.session.add(appointment)
+    db.session.commit()
+
+    flash("Appointment booked successfully!")
+    return redirect(url_for('explore'))
+
+
+@app.route('/tutor/delete_availability/<int:slot_id>', methods=['GET'])
+@login_required
+def delete_availability(slot_id):
+    slot = Availability.query.get_or_404(slot_id)
+
+    if current_user.id != slot.tutor_id:
+        abort(403)
+
+    if slot.is_booked:
+        flash("Cannot delete a booked slot.")
+        return redirect(url_for('add_availability'))
+
+    db.session.delete(slot)
+    db.session.commit()
+    flash("Slot deleted.")
+    return redirect(url_for('add_availability'))
+
+    flash("Appointment requested!")
+    return redirect(url_for('index'))

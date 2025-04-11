@@ -17,6 +17,10 @@
                 <p><a href="{{ url_for('edit_profile') }}">Edit your profile</a></p>
                 <p><a href="{{ url_for('add_subject') }}">Manage your subjects</a></p>
                 {% endif %}
+                {% if current_user.role == UserRole.TUTOR %}
+                <p><a href="{{ url_for('add_availability') }}">Manage Availability</a></p>
+                {% endif %}
+
             </td>
         </tr>
     </table>

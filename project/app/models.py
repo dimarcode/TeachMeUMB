@@ -19,8 +19,9 @@ user_subject = db.Table(
 
 
 class UserRole(Enum):
-    STUDENT = "student"
-    TUTOR = "tutor"    
+    STUDENT = "STUDENT"
+    TUTOR = "TUTOR"
+  
 
 
 class Subject(db.Model):
@@ -120,6 +121,17 @@ class Appointment(db.Model):
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
                 f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")
+
+class Availability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    time = db.Column(db.Time, nullable=False)
+    is_booked = db.Column(db.Boolean, default=False)
+
+    tutor = db.relationship('User', backref='availabilities', lazy=True)
+
+
 
 
 @login.user_loader

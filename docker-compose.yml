@@ -2,7 +2,7 @@ services:
   backend:
     build: ./project
     ports:
-      - "5002:5000"
+      - "5003:5000"
     volumes:
       - ./project:/app
     environment:
@@ -14,8 +14,8 @@ services:
   mail:
     build: ./mail  # Build the MailHog image from the Dockerfile in the 'mail' folder
     ports:
-      - "8025:8025"  # MailHog web interface
-      - "1025:1025"  # SMTP server
+      - "8026:8025"  # MailHog web interface
+      - "1026:1025"  # SMTP server
     environment:
       - MAIL_SERVER=localhost
       - MAIL_PORT=1025

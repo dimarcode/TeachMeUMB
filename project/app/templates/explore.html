@@ -9,6 +9,18 @@
                 I can't find any tutors for my class
             </a>
         </div>
+        <form method="GET" action="{{ url_for('explore') }}" class="mb-4">
+            <label for="subject">Filter by subject:</label>
+            <select name="subject" id="subject" class="form-select" style="width: 300px; display: inline-block;">
+              <option value="">-- All Subjects --</option>
+              {% for subject in subjects %}
+                <option value="{{ subject.id }}" {% if subject.id == selected_subject %}selected{% endif %}>
+                  {{ subject.name }} - {{ subject.topic }}
+                </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Search</button>
+          </form>          
         {% if tutors %}
         <div class="mt-5">
             <h2>Available Tutors</h2>
