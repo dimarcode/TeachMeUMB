@@ -4,9 +4,12 @@
     
     <h1>Alerts</h1>
     {% if alerts %}
-        {% for alert in alerts %}
-            {% include '_alert.html' with context %}
-        {% endfor %}
+        <ul>
+            {% for alert in alerts %}
+                {% include '_alert.html' with context %}
+            {% endfor %}
+        </ul>
+        
     {% else %}
         <p>No alerts to display.</p>
     {% endif %}
@@ -33,4 +36,17 @@
             </li>
         </ul>
     </nav>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Loop through all alerts and format their timestamps
+        document.querySelectorAll('[data-timestamp]').forEach(function (element) {
+            const rawTimestamp = element.getAttribute('data-timestamp');
+            const formattedTime = moment(rawTimestamp).format('MMMM Do YYYY, h:mm A'); // Example format
+            const timestampElement = document.getElementById('formatted-timestamp-' + element.id.split('-')[2]);
+            if (timestampElement) {
+                timestampElement.textContent = `(${formattedTime})`;
+            }
+        });
+    });
+    </script>
 {% endblock %}

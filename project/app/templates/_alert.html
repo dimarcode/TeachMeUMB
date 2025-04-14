@@ -1,7 +1,8 @@
-<ul>
-    <li class="list-group-item">
-    <h5>{{ alert.subject }} </h5>
-    <strong>{{ moment(alert.timestamp).fromNow() }}, the following event occurred</strong>: 
-    <br>{{ alert.message }}
+<li class="list-group-item">
+    <strong>{{ alert.subject }}</strong>: 
+    <span id="alert-message-{{ alert.id }}" data-timestamp="{{ alert.timestamp }}">
+        {{ alert.source }}  {{ alert.message }} on {{ moment(alert.relevant_date).format('LLL') }}. Check your appointments page.
+    </span>
+    <small class="text-muted" id="formatted-timestamp-{{ alert.id }}"></small>
 </li>
-</ul>
+

@@ -358,17 +358,21 @@ def book_appointment():
         db.session.add(appointment)
         db.session.commit()
 
+        formatted_booking_date=moment(booking_date).format('LLL')
+
         # Create an alert for the tutor
         alert = Alert(
             recipient_id=tutor.id,
-            subject=f"Alert: New Appointment Booked",
-            message=f"{current_user.id} moment has booked an appointment for {subject.name} on {booking_date} at {booking_time}.",
+            source=current_user.username,
+            category='book_appointment',
+            subject=f"New Appointment Booked",
+            message=f"booked an appointment with you for {subject.name} on {booking_date} at {booking_time}. Check your appointments page.",
         )
 
         db.session.add(alert)
         db.session.commit()
 
-        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert", "success")
+        flash(f"Appointment booked with {tutor.username} for {subject.name} on {formatted_booking_date} at {booking_time}. They have been sent an alert", "success")
     except ValueError as e:
         flash(f"Invalid date/time format: {str(e)}", "danger")
     except Exception as e:
@@ -441,13 +445,19 @@ def appointment_update(appointment_id):
 def remove_appointment(appointment_id):
     # Fetch the appointment
     appointment = Appointment.query.get_or_404(appointment_id)
-
+    
     # Check if the current user is associated with the appointment
     if current_user.id not in [appointment.student_id, appointment.tutor_id]:
         flash("You are not authorized to cancel this appointment.", "danger")
         return redirect(request.referrer or url_for('index'))
 
     try:
+        # Access all required attributes before deleting the appointment
+        recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
+        subject_name = appointment.subject.name  # Access subject name
+        booking_date = appointment.booking_date
+        booking_time = appointment.booking_time
+
         # Cancel the appointment and set last_updated_by
         appointment.cancel(current_user.role)
         db.session.delete(appointment)
@@ -456,6 +466,24 @@ def remove_appointment(appointment_id):
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Create an alert for the recipient
+        alert = Alert(
+            recipient_id=recipient_id,
+            source=current_user.username,
+            category='cancel_appointment',
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time,
+            subject="Appointment Canceled",
+            message=f"canceled their appointment with you for {subject_name}",
+        )
+        db.session.add(alert)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while sending alert: {str(e)}", "danger")
 
     return redirect(request.referrer or url_for('index'))
 

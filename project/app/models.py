@@ -192,14 +192,14 @@ class Post(db.Model):
 class Alert(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     
-    subject: so.Mapped[str] = so.mapped_column(sa.ForeignKey(User.id), # subject/headline of the alert
-                                            index=True)
+    subject: so.Mapped[str] = so.mapped_column(sa.String(140)) # subject/headline of the alert
     message: so.Mapped[str] = so.mapped_column(sa.String(140)) # relevant information
     category: so.Mapped[str] = so.mapped_column(sa.String(50), index=True, default='general') # what type of alert (booked appointment, canceled appointment, etc.)
     timestamp: so.Mapped[datetime] = so.mapped_column(
         index=True, default=lambda: datetime.now(timezone.utc))
-    
-    source: so.Mapped[str] = so.mapped_column(sa.String(140)) # who caused the alert
+    relevant_date = db.Column(db.Date)
+    relevant_time = db.Column(db.Time)
+    source: so.Mapped[str] = so.mapped_column(sa.String(140)) # what caused the alert
     recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True) # who is receiving the alert
 
     # Correctly define the recipient relationship

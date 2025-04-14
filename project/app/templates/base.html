@@ -44,15 +44,22 @@
                         <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">{{ ('Home') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{{ url_for('explore') }}">{{ ('Explore') }}</a>
+                        <a class="nav-link" aria-current="page" href="{{ url_for('explore') }}">
+                        {{ ('Explore') }}
+                        </a>
                     </li>
                 </ul>
                 <ul class="navbar-nav mb-2 mb-lg-0">
                     {% if current_user.is_anonymous %}
                     <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{{ url_for('login') }}">{{ ('Login') }}</a>
+                        <a class="nav-link" aria-current="page" href="{{ url_for('login') }}">
+                        {{ ('Login') }}
+                        </a>
                     </li>
                     {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" aria-current="page" href="{{ url_for('user', username=current_user.username) }}">{{ ('Profile') }}</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" aria-current="page" href="{{ url_for('messages') }}">
                         Messages
@@ -63,6 +70,8 @@
                                             {{ unread_message_count }}
                             </span>
                         </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" aria-current="page" href="{{ url_for('messages') }}">
                         Alerts
                             {% set unread_alert_count = current_user.unread_alert_count() %}
@@ -72,9 +81,6 @@
                                             {{ unread_alert_count }}
                             </span>
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{{ url_for('user', username=current_user.username) }}">{{ ('Profile') }}</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" aria-current="page" href="{{ url_for('logout') }}">{{ ('Logout') }}</a>
