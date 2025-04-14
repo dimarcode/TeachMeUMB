@@ -1,0 +1,7 @@
+<ul>
+    <li class="list-group-item">
+    <h5>{{ alert.subject }} </h5>
+    <strong>{{ moment(alert.timestamp).fromNow() }}, the following event occurred</strong>: 
+    <br>{{ alert.message }}
+</li>
+</ul>

@@ -9,6 +9,8 @@ from config import Config
 from sqlalchemy import MetaData
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
+from flask_moment import Moment
+from config import Config
 
 naming_convention = {
     "ix": "ix_%(column_0_label)s",
@@ -25,6 +27,7 @@ migrate = Migrate(app, db)
 login = LoginManager(app)
 login.login_view = 'login'
 mail = Mail(app)
+moment = Moment(app)
 csrf = CSRFProtect(app)
 csrf.init_app(app)
 
@@ -56,5 +59,5 @@ if not app.debug:
     app.logger.setLevel(logging.INFO)
     app.logger.info('Microblog startup')
 
-from app import routes, models, errors, calendarplus
+from app import routes, models, errors
 from app.custom import cli

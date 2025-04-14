@@ -3,11 +3,15 @@ from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
+from flask_moment import moment
 import sqlalchemy as sa
 from app import app, db, mail
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, BookAppointmentForm, UpdateAppointmentForm, RequestClassForm
-from app.models import User, UserRole, Subject, Appointment, RequestedSubject
-from app.calendarplus import AppointmentCalendar
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
+BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, MessageForm, ResetPasswordRequestForm, \
+ResetPasswordForm
+from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
+Notification, Alert
+from app.email import send_password_reset_email
 
 
 @app.before_request
@@ -17,17 +21,11 @@ def before_request():
         db.session.commit()
 
 
-@app.context_processor
-def inject_user_role():
-    return dict(UserRole=UserRole)
-
-
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 @login_required
 def index():
     form = BookAppointmentForm()
-
     # Query appointments for the current user
     appointments = Appointment.query.filter(
         (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
@@ -72,6 +70,7 @@ def index():
         confirmed_appointments=confirmed_appointments,
         requested_subjects=requested_subjects,
         form=form,
+        UserRole=UserRole,
         events=events or [],
     )
 
@@ -120,6 +119,38 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 
+@app.route('/reset_password_request', methods=['GET', 'POST'])
+def reset_password_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = ResetPasswordRequestForm()
+    if form.validate_on_submit():
+        user = db.session.scalar(
+            sa.select(User).where(User.email == form.email.data))
+        if user:
+            send_password_reset_email(user)
+        flash('Check your email for the instructions to reset your password')
+        return redirect(url_for('login'))
+    return render_template('reset_password_request.html',
+                           title='Reset Password', form=form)
+
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    user = User.verify_reset_password_token(token)
+    if not user:
+        return redirect(url_for('index'))
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Your password has been reset.')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', form=form)
+
+
 @app.route('/explore')
 @login_required
 def explore():
@@ -149,7 +180,8 @@ def explore():
             title='Explore',
             tutors=tutors,
             form=form,
-            tutors_by_subject=tutors_by_subject
+            tutors_by_subject=tutors_by_subject,
+            UserRole = UserRole
         )
 
     elif current_user.role == UserRole.TUTOR:
@@ -164,6 +196,7 @@ def explore():
             'explore.html',
             title='Explore',
             requested_classes=requested_classes,
+            UserRole = UserRole,
             form=form
         )
 
@@ -191,16 +224,6 @@ def edit_profile():
         form.about_me.data = current_user.about_me
     return render_template('edit_profile.html', title='Edit Profile',
                            form=form)
-
-
-@app.route('/send-email', methods=['GET', 'POST'])
-@login_required
-def send_email():
-    msg = Message("Hello from Flask", sender="noreply@example.com", recipients=["test@example.com"])
-    msg.body = "This is a test email sent from Flask."
-    mail.send(msg)
-    return "Email sent!"
-
 
 # SUBJECTS SYSTEM
 
@@ -253,6 +276,7 @@ def remove_subject(subject_id):
     else:
         flash(f'You are not enrolled in {subject.name}', 'warning')
     return redirect(request.referrer or url_for('add_subject'))
+
 
 @app.route('/request_class', methods=['GET', 'POST'])
 @login_required
@@ -334,7 +358,17 @@ def book_appointment():
         db.session.add(appointment)
         db.session.commit()
 
-        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}.", "success")
+        # Create an alert for the tutor
+        alert = Alert(
+            recipient_id=tutor.id,
+            subject=f"Alert: New Appointment Booked",
+            message=f"{current_user.id} moment has booked an appointment for {subject.name} on {booking_date} at {booking_time}.",
+        )
+
+        db.session.add(alert)
+        db.session.commit()
+
+        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert", "success")
     except ValueError as e:
         flash(f"Invalid date/time format: {str(e)}", "danger")
     except Exception as e:
@@ -428,7 +462,6 @@ def remove_appointment(appointment_id):
 
 # DEBUG
 
-
 # debug page to make sure appointments are adding and filtering correctly
 @app.route('/appointments', methods=['GET', 'POST'])
 @login_required
@@ -469,3 +502,85 @@ def api_events():
     ]
 
     return jsonify(events)
+
+
+@app.route('/send_message/<recipient>', methods=['GET', 'POST'])
+@login_required
+def send_message(recipient):
+    user = db.first_or_404(sa.select(User).where(User.username == recipient))
+    form = MessageForm()
+    if form.validate_on_submit():
+        msg = Message(author=current_user, recipient=user,
+                      body=form.message.data)
+        db.session.add(msg)
+        user.add_notification('unread_message_count',
+                              user.unread_message_count())
+        db.session.commit()
+        flash('Your message has been sent.')
+        return redirect(url_for('user', username=recipient))
+    return render_template('send_message.html', title='Send Message',
+                           form=form, recipient=recipient)
+
+
+@app.route('/messages')
+@login_required
+def messages():
+    current_user.last_message_read_time = datetime.now(timezone.utc)
+    current_user.add_notification('unread_message_count', 0)
+    db.session.commit()
+    page = request.args.get('page', 1, type=int)
+    query = current_user.messages_received.select().order_by(
+        Message.timestamp.desc())
+    alerts_query = current_user.alerts_received.select().order_by(
+        Alert.timestamp.desc())
+    alerts = db.paginate(alerts_query, page=page,
+                           per_page=app.config['POSTS_PER_PAGE'],
+                           error_out=False)
+    messages = db.paginate(query, page=page,
+                           per_page=app.config['POSTS_PER_PAGE'],
+                           error_out=False)
+
+
+    next_url = url_for('messages', page=messages.next_num) \
+        if messages.has_next else None
+    prev_url = url_for('messages', page=messages.prev_num) \
+        if messages.has_prev else None
+    return render_template('messages.html', messages=messages.items, alerts=alerts.items,
+                           next_url=next_url, prev_url=prev_url)
+
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    since = request.args.get('since', 0.0, type=float)
+    
+    query = current_user.notifications.select().where(
+        Notification.timestamp > since).order_by(Notification.timestamp.asc())
+    notifications = db.session.scalars(query)
+    
+    # Query alerts
+    alert_query = current_user.alerts_received.select().where(
+        Alert.timestamp > datetime.fromtimestamp(since, timezone.utc)
+    ).order_by(Alert.timestamp.asc())
+    alerts = db.session.scalars(alert_query)
+
+    # Combine notifications and alerts
+    combined = [{
+        'type': 'notification',
+        'name': n.name,
+        'data': n.get_data(),
+        'timestamp': n.timestamp
+    } for n in notifications] + [{
+        'type': 'alert',
+        'message': a.message,
+        'subject': a.subject,  # Assuming `subject` is a User
+        'timestamp': a.timestamp
+    } for a in alerts]
+
+    combined.sort(key=lambda x: x['timestamp'])
+    return jsonify(combined)
+
+
+# @app.context_processor
+# def inject_user_role():
+#     return dict(UserRole=UserRole)
