@@ -34,7 +34,14 @@
                                 {% else %}
                                     <p><em>No bio available</em></p>
                                 {% endif %}
-                                
+                                <p class="card-text">
+                                    <strong>Shared subjects with {{ tutor.username }}:</strong><br>
+                                    {% for subject in tutor.my_subjects %}
+                                        {% if subject in current_user.my_subjects %}
+                                        <span class="badge bg-primary">{{ subject.name }}<br></span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </p>
                                 <!-- Form for booking appointment -->
                                 <form action="{{ url_for('book_appointment') }}" method="post">
                                     {{ form.hidden_tag() }}  <!-- Include CSRF token -->
