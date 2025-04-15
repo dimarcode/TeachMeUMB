@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, HiddenField, DateField, TimeField
-from wtforms.validators import ValidationError, DataRequired, Email, EqualTo, Length, Regexp
+from wtforms.validators import ValidationError, DataRequired, InputRequired, Email, EqualTo, Length, Regexp
 import sqlalchemy as sa
 from app import db
 from app.models import User, UserRole, Subject, user_subject
@@ -115,7 +115,63 @@ class ResetPasswordForm(FlaskForm):
         'Repeat Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Request Password Reset')
 
+
 class MessageForm(FlaskForm):
     message = TextAreaField(('Message'), validators=[
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
+
+
+class AvailabilityForm(FlaskForm):
+    day_of_week = SelectField('Day of Week', 
+        choices=[
+            ('0', 'Monday'),
+            ('1', 'Tuesday'),
+            ('2', 'Wednesday'),
+            ('3', 'Thursday'),
+            ('4', 'Friday'),
+            ('5', 'Saturday'),
+            ('6', 'Sunday')
+        ],
+        coerce=int,  # This ensures the value is converted to an integer
+        validators=[InputRequired()]
+    )
+    start_time = TimeField('Start Time', validators=[DataRequired()])
+    end_time = TimeField('End Time', validators=[DataRequired()])
+    submit = SubmitField('Add Availability')
+
+
+class TestAvailabilityForm(FlaskForm):
+    tutor_id = SelectField('Tutor', coerce=int, validators=[DataRequired()])
+    day_of_week = SelectField('Day of Week', 
+        choices=[
+            ('0', 'Monday'),
+            ('1', 'Tuesday'),
+            ('2', 'Wednesday'),
+            ('3', 'Thursday'),
+            ('4', 'Friday'),
+            ('5', 'Saturday'),
+            ('6', 'Sunday')
+        ],
+        coerce=int,  # This ensures the value is converted to an integer
+        validators=[InputRequired()]
+    )
+    date = DateField('Date', format='%Y-%m-%d', validators=[DataRequired()])
+    submit = SubmitField('Check Availability')
+# class AvailabilityForm(FlaskForm):
+#     day_of_week = SelectField('Day of Week', 
+#         choices=[
+#             ('0', 'Monday'),
+#             ('1', 'Tuesday'),
+#             ('2', 'Wednesday'),
+#             ('3', 'Thursday'),
+#             ('4', 'Friday'),
+#             ('5', 'Saturday'),
+#             ('6', 'Sunday')
+#         ],
+#         coerce=int,  # This ensures the value is converted to an integer
+#         validators=[InputRequired()]
+#     )
+#     start_time = TimeField('Start Time', validators=[DataRequired()])
+#     end_time = TimeField('End Time', validators=[DataRequired()])
+#     submit = SubmitField('Add Availability')

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, time
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
@@ -8,9 +8,9 @@ import sqlalchemy as sa
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
 BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, MessageForm, ResetPasswordRequestForm, \
-ResetPasswordForm
+ResetPasswordForm, AvailabilityForm, TestAvailabilityForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
-Notification, Alert
+Notification, Alert, Availability
 from app.email import send_password_reset_email
 
 
@@ -206,7 +206,7 @@ def explore():
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
     form = BookAppointmentForm()  # Create an instance of the form
-    return render_template('user.html', user=user, form=form)
+    return render_template('user.html', user=user, form=form, UserRole = UserRole)
 
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
@@ -358,7 +358,6 @@ def book_appointment():
         db.session.add(appointment)
         db.session.commit()
 
-        formatted_booking_date=moment(booking_date).format('LLL')
 
         # Create an alert for the tutor
         alert = Alert(
@@ -372,7 +371,7 @@ def book_appointment():
         db.session.add(alert)
         db.session.commit()
 
-        flash(f"Appointment booked with {tutor.username} for {subject.name} on {formatted_booking_date} at {booking_time}. They have been sent an alert", "success")
+        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert", "success")
     except ValueError as e:
         flash(f"Invalid date/time format: {str(e)}", "danger")
     except Exception as e:
@@ -607,6 +606,117 @@ def notifications():
 
     combined.sort(key=lambda x: x['timestamp'])
     return jsonify(combined)
+
+
+@app.route('/set_availability', methods=['GET', 'POST'])
+@login_required
+def set_availability():
+    if current_user.role != UserRole.TUTOR:
+        flash('Only tutors can set availability.', 'danger')
+        return redirect(url_for('index'))
+
+    form = AvailabilityForm()
+    all_hours = [time(hour, 0) for hour in range(24)]  # Generate hour blocks
+
+    if form.validate_on_submit():
+        try:
+            availability = current_user.add_availability(
+                day_of_week=form.day_of_week.data,
+                start_time=form.start_time.data,
+                end_time=form.end_time.data
+            )
+            db.session.commit()
+            flash(f'Availability added successfully!', 'success')
+            return redirect(url_for('set_availability'))
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('set_availability'))
+
+    # Query availabilities properly
+    query = sa.select(Availability).where(
+        Availability.tutor_id == current_user.id
+    ).order_by(
+        Availability.day_of_week,
+        Availability.start_time
+    )
+    availabilities = db.session.scalars(query).all()
+
+    return render_template(
+        'set_availability.html',
+        title='Set Availability',
+        form=form,
+        availabilities=availabilities,
+        all_hours=all_hours  # Pass the hour blocks to the template
+    )
+
+
+@app.route('/delete_availability/<int:availability_id>', methods=['POST'])
+@login_required
+def delete_availability(availability_id):
+    if current_user.role != UserRole.TUTOR:
+        flash('Only tutors can manage availability.', 'danger')
+        return redirect(url_for('index'))
+
+    query = sa.select(Availability).where(
+        Availability.id == availability_id,
+        Availability.tutor_id == current_user.id
+    )
+    availability = db.session.scalar(query)
+
+    if availability is None:
+        flash('Availability slot not found.', 'danger')
+        return redirect(url_for('set_availability'))
+
+    db.session.delete(availability)
+    db.session.commit()
+    flash('Availability slot deleted.', 'success')
+    return redirect(url_for('set_availability'))
+
+
+@app.route('/test_availability', methods=['GET', 'POST'])
+@login_required
+def test_availability():
+    form = TestAvailabilityForm()
+
+    # Populate the tutor choices dynamically
+    form.tutor_id.choices = [(tutor.id, tutor.username) for tutor in User.query.filter_by(role=UserRole.TUTOR).all()]
+
+    availabilities = None
+    available_times = []
+    unavailable_times = []
+
+    if form.validate_on_submit():
+        tutor_id = form.tutor_id.data
+        selected_date = form.date.data  # Assume the form includes a date field
+        day_of_week = form.day_of_week.data
+
+        # Query the Availability model directly
+        availabilities = Availability.query.filter_by(
+            tutor_id=tutor_id,
+            day_of_week=day_of_week,
+            is_active=True
+        ).all()
+
+        # Query the Appointment model for booked times on the selected date
+        booked_appointments = Appointment.query.filter_by(
+            tutor_id=tutor_id,
+            booking_date=selected_date
+        ).all()
+
+        # Extract booked times
+        booked_times = [appointment.booking_time for appointment in booked_appointments]
+
+        # Create a list of all hours in the day
+        all_hours = [time(hour, 0) for hour in range(24)]
+
+        # Find available and unavailable times
+        for hour in all_hours:
+            if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
+                available_times.append(hour)
+            else:
+                unavailable_times.append(hour)
+
+    return render_template('test_availability.html', form=form, availabilities=availabilities, available_times=available_times, unavailable_times=unavailable_times)
 
 
 # @app.context_processor

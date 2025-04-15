@@ -87,6 +87,8 @@ class User(UserMixin, db.Model):
     alerts_received: so.WriteOnlyMapped['Alert'] = so.relationship(
         foreign_keys="Alert.recipient_id", back_populates="recipient", lazy="dynamic")
 
+    availabilities: so.WriteOnlyMapped['Availability'] = so.relationship(back_populates='tutor', cascade='all, delete-orphan')
+
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -135,6 +137,23 @@ class User(UserMixin, db.Model):
         n = Notification(name=name, payload_json=json.dumps(data), user=self)
         db.session.add(n)
         return n
+    
+    def add_availability(self, day_of_week: int, start_time: time, end_time: time) -> 'Availability':
+        """Add a new availability slot for the tutor."""
+        if self.role != UserRole.TUTOR:
+            raise ValueError("Only tutors can set availability")
+        
+        if not (0 <= day_of_week <= 6):
+            raise ValueError("Day of week must be between 0 (Monday) and 6 (Sunday)")
+        
+        availability = Availability(
+            tutor_id=self.id,
+            day_of_week=day_of_week,
+            start_time=start_time,
+            end_time=end_time
+        )
+        db.session.add(availability)
+        return availability
 
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -232,7 +251,8 @@ class Message(db.Model):
 
     def __repr__(self):
         return '<Message {}>'.format(self.body)
-    
+
+
 class Notification(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(128), index=True)
@@ -246,6 +266,21 @@ class Notification(db.Model):
     def get_data(self):
         return json.loads(str(self.payload_json))
 
+
+class Availability(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    tutor_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
+    day_of_week: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)  # 0-6 for Monday-Sunday
+    start_time: so.Mapped[time] = so.mapped_column(sa.Time, nullable=False)
+    end_time: so.Mapped[time] = so.mapped_column(sa.Time, nullable=False)
+    is_active: so.Mapped[bool] = so.mapped_column(sa.Boolean, default=True)
+
+    # Relationship to User model
+    tutor: so.Mapped['User'] = so.relationship(back_populates='availabilities')
+
+    def __repr__(self):
+        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        return f'<Availability {days[self.day_of_week]}: {self.start_time}-{self.end_time}>'
 
 @login.user_loader
 def load_user(id):

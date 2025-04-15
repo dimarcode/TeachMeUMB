@@ -10,19 +10,54 @@
             var events = {{ events|tojson|safe }} || []; // Fallback to an empty array if events is None
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth', // Default view
-                themeSystem: 'bootstrap5',  // Use Bootstrap 5 styling
+                initialView: 'dayGridMonth',
+                themeSystem: 'bootstrap5',
                 height: 650,
-                events: events,             // Use the embedded events
+                events: events,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
                 },
                 eventClick: function(info) {
-                    // Display event details in a popup or modal
-                    alert(info.event.extendedProps.description);
-                }
+                // Prevent default behavior
+                info.jsEvent.preventDefault();
+
+                // Get modal elements
+                const modalTitle = document.getElementById('modalTitle');
+                const modalBody = document.getElementById('modalBody');
+                const modalFooter = document.getElementById('modalFooter');
+
+                // Format the appointment time
+                const appointmentDate = info.event.start.toLocaleDateString();
+                const appointmentTime = info.event.start.toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+
+                // Get the course name from the event title or subject property
+                const courseName = info.event.title
+
+                // Set custom formatted content
+                modalTitle.textContent = courseName;
+                modalBody.innerHTML = `
+                    <div class="appointment-details">
+                        <p><strong>Date:</strong> ${appointmentDate}</p>
+                        <p><strong>Time:</strong> ${appointmentTime}</p>
+                        <p><strong>Status:</strong> ${info.event.extendedProps.status}</p>
+                        ${info.event.extendedProps.notes ? 
+                            `<p><strong>Additional Notes:</strong> ${info.event.extendedProps.notes}</p>` 
+                            : ''}
+                    </div>
+                `;
+                modalFooter.innerHTML = `
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                `;
+
+                // Show the modal
+                const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+                eventModal.show();
+            }
             });
 
             calendar.render();
@@ -62,6 +97,24 @@
                     </tbody>
                 </table>
             {% endif %}
+        </div>
+
+         <!-- Custom Modal -->
+        <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Custom modal
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                Custom footer
+            </div>
+            </div>
+        </div>
         </div>
 
         <!-- Pending Appointments Waiting for Student/Tutor Approval -->
