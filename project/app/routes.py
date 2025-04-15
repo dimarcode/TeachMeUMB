@@ -154,8 +154,7 @@ def reset_password(token):
 @app.route('/explore')
 @login_required
 def explore():
-    form = BookAppointmentForm()
-
+    form= BookAppointmentForm()
     if current_user.role == UserRole.STUDENT:
         # Find tutors who share subjects with the current user
         tutors = User.query.filter(
@@ -195,9 +194,9 @@ def explore():
         return render_template(
             'explore.html',
             title='Explore',
+            form=form,
             requested_classes=requested_classes,
-            UserRole = UserRole,
-            form=form
+            UserRole = UserRole
         )
 
 
@@ -312,73 +311,72 @@ def request_class():
 # APPOINTMENTS SYSTEM
 
 
-@app.route('/book_appointment', methods=['POST'])
+@app.route('/book_appointment', methods=['GET', 'POST'])
 @login_required
 def book_appointment():
-    tutor_id = request.form.getlist('tutor_id')[-1]
-    subject_id = request.form.get('subject_id')
-    booking_date_str = request.form.get('booking_date')
-    booking_time_str = request.form.get('booking_time')
-
-    if not tutor_id or not booking_date_str or not booking_time_str or not subject_id:
-        flash("Missing required fields", "danger")
+    tutor_id = request.args.get('tutor_id', type=int)
+    if not tutor_id:
+        flash("Invalid tutor selected.", "danger")
         return redirect(url_for('explore'))
 
-    try:
-        tutor_id = int(tutor_id)
-        subject_id = int(subject_id)
-        booking_date = datetime.strptime(booking_date_str, '%Y-%m-%d').date()
-        booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+    tutor = User.query.get_or_404(tutor_id)
 
-        tutor = User.query.get(tutor_id)
-        subject = Subject.query.get(subject_id)
+    form = BookAppointmentForm(tutor_id=tutor_id)
+    form.tutor_id.validators = []
+    # Populate the subject dropdown with shared subjects
+    form.subject_id.choices = [
+        (subject.id, f"{subject.name} - {subject.topic}")
+        for subject in tutor.my_subjects if subject in current_user.my_subjects
+    ]
 
-        if not tutor or tutor.role != UserRole.TUTOR:
-            flash(f'Invalid tutor selection.', 'danger')
-            return redirect(url_for('explore'))
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            tutor = User.query.get_or_404(tutor_id)
+            subject_id = form.subject_id.data
+            booking_date = form.booking_date.data
+            booking_time = form.booking_time.data
 
-        if not subject:
-            flash(f'Invalid subject selection.', 'danger')
-            return redirect(url_for('explore'))
+            subject = Subject.query.get(subject_id)
+            if not subject:
+                flash("Invalid subject selection.", "danger")
+                return redirect(url_for('book_appointment', tutor_id=tutor_id))
 
-        if current_user.role != UserRole.STUDENT:
-            flash("Only students can book appointments.", "danger")
-            return redirect(url_for('explore'))
+            if current_user.role != UserRole.STUDENT:
+                flash("Only students can book appointments.", "danger")
+                return redirect(url_for('explore'))
 
-        # Create the appointment
-        appointment = Appointment(
-            student_id=current_user.id,
-            tutor_id=tutor.id,
-            subject_id=subject.id,
-            booking_date=booking_date,
-            booking_time=booking_time,
-            last_updated_by=current_user.role
-        )
+            # Create the appointment
+            appointment = Appointment(
+                student_id=current_user.id,
+                tutor_id=tutor.id,
+                subject_id=subject.id,
+                booking_date=booking_date,
+                booking_time=booking_time,
+                last_updated_by=current_user.role
+            )
 
-        db.session.add(appointment)
-        db.session.commit()
+            db.session.add(appointment)
+            db.session.commit()
 
+            # Create an alert for the tutor
+            alert = Alert(
+                recipient_id=tutor.id,
+                source=current_user.username,
+                category='book_appointment',
+                subject=f"New Appointment Booked",
+                message=f"booked an appointment with you for {subject.name} on {booking_date} at {booking_time}. Check your appointments page.",
+            )
 
-        # Create an alert for the tutor
-        alert = Alert(
-            recipient_id=tutor.id,
-            source=current_user.username,
-            category='book_appointment',
-            subject=f"New Appointment Booked",
-            message=f"booked an appointment with you for {subject.name} on {booking_date} at {booking_time}. Check your appointments page.",
-        )
+            db.session.add(alert)
+            db.session.commit()
 
-        db.session.add(alert)
-        db.session.commit()
+            flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert.", "success")
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error booking appointment: {str(e)}", "danger")
 
-        flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert", "success")
-    except ValueError as e:
-        flash(f"Invalid date/time format: {str(e)}", "danger")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error booking appointment: {str(e)}", "danger")
-
-    return redirect(url_for('explore'))
+    return render_template('book_appointment.html', form=form, tutor=tutor)
 
 
 @app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])
@@ -530,6 +528,47 @@ def api_events():
 
     return jsonify(events)
 
+
+@app.route('/api/get_timeslots', methods=['GET'])
+def api_get_timeslots():
+    tutor_id = request.args.get('tutor_id', type=int)
+    selected_date_str = request.args.get('selected_date')
+
+    if not tutor_id or not selected_date_str:
+        return jsonify({'error': 'Missing tutor_id or selected_date'}), 400
+
+    try:
+        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        day_of_week = selected_date.weekday()  # Monday = 0, Sunday = 6
+
+        # Query the Availability model for the tutor's availability on the selected day
+        availabilities = Availability.query.filter_by(
+            tutor_id=tutor_id,
+            day_of_week=day_of_week,
+            is_active=True
+        ).all()
+
+        # Query the Appointment model for booked times on the selected date
+        booked_appointments = Appointment.query.filter_by(
+            tutor_id=tutor_id,
+            booking_date=selected_date
+        ).all()
+
+        # Extract booked times
+        booked_times = [appointment.booking_time for appointment in booked_appointments]
+
+        # Create a list of all hours in the day
+        all_hours = [time(hour, 0) for hour in range(24)]
+
+        # Find available and unavailable times
+        available_times = []
+        for hour in all_hours:
+            if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
+                available_times.append(hour)
+
+        return jsonify({'available_times': [t.strftime('%H:%M') for t in available_times]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/send_message/<recipient>', methods=['GET', 'POST'])
 @login_required
@@ -717,6 +756,7 @@ def test_availability():
                 unavailable_times.append(hour)
 
     return render_template('test_availability.html', form=form, availabilities=availabilities, available_times=available_times, unavailable_times=unavailable_times)
+
 
 
 # @app.context_processor

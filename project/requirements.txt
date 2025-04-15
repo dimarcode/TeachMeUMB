@@ -21,6 +21,7 @@ Flask-SQLAlchemy
 Flask-WTF
 greenlet
 idna
+importlib-metadata
 itsdangerous
 Jinja2
 langdetect
@@ -38,3 +39,4 @@ typing_extensions
 urllib3
 Werkzeug
 WTForms
+zipp

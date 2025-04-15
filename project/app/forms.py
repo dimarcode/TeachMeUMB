@@ -79,6 +79,7 @@ class UserSubjectForm(FlaskForm):
 
 class BookAppointmentForm(FlaskForm):
     tutor_id = HiddenField("Tutor ID", validators=[DataRequired()])  # Hidden field to store tutor ID
+    subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
     booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
     submit = SubmitField("Book Appointment")
