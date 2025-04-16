@@ -17,7 +17,7 @@
     <div class="container">
         <div class="table-responsive-sm">
             <table class="table table-sm align-middle">
-                <thead class="calendar-header">
+                <thead class="calendar-header container">
                     <tr>
                         {% for i in range(7) %}
                         <th scope="col" id="day-{{ i }}" class="day border px-1">
@@ -30,7 +30,6 @@
         </div>
     </div>
     
-
     <!-- Booking Form -->
     <form method="post">
         {{ form.hidden_tag() }}
@@ -71,7 +70,6 @@
 
     <!-- Debug Information -->
     <div class="mt-4">
-        <p>API Response:</p>
         <div id="rawJsonDiv"></div>
     </div>
 </div>
