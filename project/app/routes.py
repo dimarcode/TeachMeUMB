@@ -335,6 +335,13 @@ def book_appointment():
             subject_id = form.subject_id.data
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
+            
+            # Convert booking_time from time to datetime with timezone
+            booking_datetime = datetime.combine(
+                booking_date,  # Use the same date as booking_date
+                booking_time,  # The time object from the form
+                tzinfo=timezone.utc  # Add UTC timezone
+            )
 
             subject = Subject.query.get(subject_id)
             if not subject:
@@ -345,13 +352,13 @@ def book_appointment():
                 flash("Only students can book appointments.", "danger")
                 return redirect(url_for('explore'))
 
-            # Create the appointment
+            # Create the appointment with the datetime object
             appointment = Appointment(
                 student_id=current_user.id,
                 tutor_id=tutor.id,
                 subject_id=subject.id,
                 booking_date=booking_date,
-                booking_time=booking_time,
+                booking_time=booking_datetime,  # Use the combined datetime object
                 last_updated_by=current_user.role
             )
 
@@ -554,19 +561,24 @@ def api_get_timeslots():
             booking_date=selected_date
         ).all()
 
-        # Extract booked times
-        booked_times = [appointment.booking_time for appointment in booked_appointments]
+        # Extract booked times (convert datetime to time objects for comparison)
+        booked_times = [appointment.booking_time.time() if isinstance(appointment.booking_time, datetime) 
+                         else appointment.booking_time for appointment in booked_appointments]
 
         # Create a list of all hours in the day
         all_hours = [time(hour, 0) for hour in range(24)]
 
+        # Find available and unavailable times
         # Find available and unavailable times
         available_times = []
         for hour in all_hours:
             if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
                 available_times.append(hour)
 
-        return jsonify({'available_times': [t.strftime('%H:%M') for t in available_times]})
+        # Convert time objects to strings for JSON serialization
+        available_time_strings = [t.strftime('%H:%M') for t in available_times]
+
+        return jsonify({'available_times': available_time_strings})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

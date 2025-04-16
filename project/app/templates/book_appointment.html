@@ -77,6 +77,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         let currentDate = new Date();
@@ -126,7 +127,7 @@
         function fetchTimeSlots(selectedDate) {
             const timeSlotsContainer = document.getElementById('time_slots');
             const rawJsonDiv = document.getElementById('rawJsonDiv');
-            const tutorId = {{ tutor.id }};
+            const tutorId = document.getElementById('tutor_id').value;
             const submitBtn = document.getElementById('submit-btn');
 
             if (selectedDate) {
@@ -141,18 +142,27 @@
                             timeSlotsContainer.innerHTML = '<p class="text-muted">No time slots available</p>';
                             submitBtn.disabled = true;
                         } else {
-                            availableTimes.forEach(time => {
-                                // Convert 24-hour format to 12-hour format with AM/PM
-                                const [hours, minutes] = time.split(':');
-                                const hour = parseInt(hours);
-                                const ampm = hour >= 12 ? 'PM' : 'AM';
-                                const hour12 = hour % 12 || 12; // Convert 0 to 12 for 12 AM
-                                const formattedTime = `${hour12}:${minutes} ${ampm}`;
+                            availableTimes.forEach(timeSlot => {
+                                // Check if the time is a string (old format) or an object (new format)
+                                let displayTime, rawTime;
+                                
+                                if (typeof timeSlot === 'string') {
+                                    // Treat the backend time as UTC, then convert to local time for display
+                                    rawTime = timeSlot;
+                                    displayTime = moment.utc(timeSlot, 'HH:mm').local().format('h:mm A');
+                                } else {
+                                    // New format: object with value and display properties
+                                    rawTime = timeSlot.value;
+                                    displayTime = timeSlot.display;
+                                }
                                 
                                 const button = document.createElement('button');
                                 button.type = 'button';
                                 button.className = 'btn btn-outline-primary';
-                                button.textContent = formattedTime;
+                                button.textContent = displayTime;
+                                
+                                // Store the raw time value for form submission
+                                button.dataset.originalTime = rawTime;
                                 
                                 button.onclick = function() {
                                     // Remove active class from all buttons
@@ -163,14 +173,8 @@
                                     // Add active class to clicked button
                                     this.classList.add('active');
                                     
-                                    // Store the original 24-hour time in the hidden field
-                                    document.getElementById('selected_time').value = time;
-                                    
-                                    // Only update the display element if it exists
-                                    const timeDisplay = document.getElementById('selected-time');
-                                    if (timeDisplay) {
-                                        timeDisplay.textContent = `Selected Time: ${formattedTime}`;
-                                    }
+                                    // Store the original time in the hidden field
+                                    document.getElementById('selected_time').value = this.dataset.originalTime;
                                     
                                     // Enable submit button
                                     submitBtn.disabled = false;
@@ -178,6 +182,7 @@
                                 
                                 timeSlotsContainer.appendChild(button);
                             });
+                            submitBtn.disabled = false;
                         }
 
                         rawJsonDiv.innerHTML = JSON.stringify(response.data, null, 2);
