@@ -142,12 +142,18 @@
                             submitBtn.disabled = true;
                         } else {
                             availableTimes.forEach(time => {
+                                // Convert 24-hour format to 12-hour format with AM/PM
+                                const [hours, minutes] = time.split(':');
+                                const hour = parseInt(hours);
+                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                const hour12 = hour % 12 || 12; // Convert 0 to 12 for 12 AM
+                                const formattedTime = `${hour12}:${minutes} ${ampm}`;
+                                
                                 const button = document.createElement('button');
                                 button.type = 'button';
                                 button.className = 'btn btn-outline-primary';
-                                button.textContent = time;
+                                button.textContent = formattedTime;
                                 
-                                // In your fetchTimeSlots function where you handle time slot button clicks
                                 button.onclick = function() {
                                     // Remove active class from all buttons
                                     timeSlotsContainer.querySelectorAll('.btn').forEach(btn => {
@@ -157,13 +163,13 @@
                                     // Add active class to clicked button
                                     this.classList.add('active');
                                     
-                                    // Set the selected time value (this is the essential part)
+                                    // Store the original 24-hour time in the hidden field
                                     document.getElementById('selected_time').value = time;
                                     
                                     // Only update the display element if it exists
                                     const timeDisplay = document.getElementById('selected-time');
                                     if (timeDisplay) {
-                                        timeDisplay.textContent = `Selected Time: ${time}`;
+                                        timeDisplay.textContent = `Selected Time: ${formattedTime}`;
                                     }
                                     
                                     // Enable submit button
@@ -195,13 +201,6 @@
             currentDate.setDate(currentDate.getDate() + 7);
             updateCalendar(getStartOfWeek(currentDate));
         };
-
-        // Add this after your DOMContentLoaded event listener starts
-        document.getElementById('subject_id').addEventListener('change', function() {
-            const subjectSelect = this;
-            const selectedOption = subjectSelect.options[subjectSelect.selectedIndex];
-            document.getElementById('selected-subject').textContent = `Selected Subject: ${selectedOption.text}`;
-        });
 
         // Initialize calendar
         updateCalendar(getStartOfWeek(currentDate));
