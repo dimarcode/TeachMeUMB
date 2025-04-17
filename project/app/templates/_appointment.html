@@ -1,33 +1,48 @@
-    <tr>
-        <td>{{ appointment.id }}</td>
-        {% if current_user.role == UserRole.TUTOR %}
-            <td>{{ appointment.student.username }}</td>
-        {% else %}
-            <td>{{ appointment.tutor.username }}</td>
-        {% endif %}
-        <td>{{ appointment.subject.name }} - {{ appointment.subject.topic }}</td>
-        <td>{{ appointment.created_date.strftime('%m-%d-%Y') }} {{ appointment.created_date.strftime('%H:%M') }} {{ moment(appointment.created_date).format('LLL') }}</td>
-        <td>{{ appointment.booking_date.strftime('%m-%d-%Y') }} {{ moment(appointment.booking_date).format('LL') }}</td>
-        <td>{{ appointment.booking_time.strftime('%H:%M') }} {{ moment(appointment.booking_time).format('LLLL') }}</td>
-        <td>{{ appointment.status }}</td>
-        <td>
-            <div class="d-flex gap-2">
-                <!-- Update button -->
-                <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
-
-                <!-- Confirm button -->
-                {% if appointment.status == 'pending' and current_user.role.value != appointment.last_updated_by.value %}
-                    <form action="{{ url_for('confirm_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                        {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                        <button type="submit" class="btn btn-success btn-sm">Confirm</button>
-                    </form>
-                {% endif %}
-
-                <!-- Cancel button -->
-                <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
-                </form>
+<tr>
+    <td colspan="8">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center text-center">
+                    <div class="col">
+                        <strong>Appointment #{{ appointment.id }}</strong><br>
+                        {% if current_user.role == UserRole.TUTOR %}
+                        <strong>Student:</strong><br>
+                            <img src="{{ appointment.student.avatar(25) }}">
+                            <a href="{{ url_for('user', username=appointment.student.username) }}">{{ appointment.student.username }}</a>
+                        {% else %}
+                        <strong>Tutor:</strong><br>
+                            <img src="{{ appointment.tutor.avatar(25) }}">
+                            <a href="{{ url_for('user', username=appointment.tutor.username) }}">{{ appointment.tutor.username }}</a>
+                        {% endif %}
+                    </div>
+                    <div class="col">
+                        <strong>Subject:</strong> {{ appointment.subject.name }}<br>
+                        <small>{{ appointment.subject.topic }}</small>
+                    </div>
+                    <div class="col">
+                        <strong>Date:</strong> {{ moment(appointment.booking_date).format('LL') }}<br>
+                        <strong>Time:</strong> {{ moment(appointment.booking_time).format('LT') }}<br>
+                        <span class="badge bg-secondary text-uppercase">{{ appointment.status }}</span>
+                    </div>
+                    <div class="col">
+                        <strong>Created:</strong><br>
+                        {{ moment(appointment.created_date).format('LLL') }}
+                    </div>
+                    <div class="col d-flex flex-column gap-1 align-items-center">
+                        <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm mb-1">Update</a>
+                        {% if appointment.status == 'pending' and current_user.role.value != appointment.last_updated_by.value %}
+                            <form action="{{ url_for('confirm_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                                {{ form.hidden_tag() }}
+                                <button type="submit" class="btn btn-success btn-sm mb-1">Confirm</button>
+                            </form>
+                        {% endif %}
+                        <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                            {{ form.hidden_tag() }}
+                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                        </form>
+                    </div>
+                </div>
             </div>
-        </td>
-    </tr>
+        </div>
+    </td>
+</tr>

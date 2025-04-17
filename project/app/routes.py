@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, time
+from datetime import datetime, timezone, time, timedelta
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
@@ -71,8 +71,13 @@ def index():
         requested_subjects=requested_subjects,
         form=form,
         UserRole=UserRole,
-        events=events or [],
     )
+
+
+
+###############
+# AUTH SYSTEM #
+###############
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -151,6 +156,43 @@ def reset_password(token):
     return render_template('reset_password.html', form=form)
 
 
+
+################
+# USER PROFILE #
+################
+
+
+@app.route('/user/<username>')
+@login_required
+def user(username):
+    user = db.first_or_404(sa.select(User).where(User.username == username))
+    form = BookAppointmentForm()  # Create an instance of the form
+    return render_template('user.html', user=user, form=form, UserRole = UserRole)
+
+
+@app.route('/edit_profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    form = EditProfileForm(current_user.username)
+    if form.validate_on_submit():
+        current_user.username = form.username.data
+        current_user.about_me = form.about_me.data
+        db.session.commit()
+        flash('Your changes have been saved.')
+        return redirect(url_for('edit_profile'))
+    elif request.method == 'GET':
+        form.username.data = current_user.username
+        form.about_me.data = current_user.about_me
+    return render_template('edit_profile.html', title='Edit Profile',
+                           form=form)
+
+
+
+#######################
+# APPOINTMENTS SYSTEM #
+#######################
+
+
 @app.route('/explore')
 @login_required
 def explore():
@@ -200,31 +242,343 @@ def explore():
         )
 
 
-@app.route('/user/<username>')
+@app.route('/book_appointment', methods=['GET', 'POST'])
 @login_required
-def user(username):
-    user = db.first_or_404(sa.select(User).where(User.username == username))
-    form = BookAppointmentForm()  # Create an instance of the form
-    return render_template('user.html', user=user, form=form, UserRole = UserRole)
+def book_appointment():
+    tutor_id = request.args.get('tutor_id', type=int)
+    if not tutor_id:
+        flash("Invalid tutor selected.", "danger")
+        return redirect(url_for('explore'))
+
+    tutor = User.query.get_or_404(tutor_id)
+
+    form = BookAppointmentForm(tutor_id=tutor_id)
+    form.tutor_id.validators = []
+    # Populate the subject dropdown with shared subjects
+    form.subject_id.choices = [
+        (subject.id, f"{subject.name} - {subject.topic}")
+        for subject in tutor.my_subjects if subject in current_user.my_subjects
+    ]
+
+    if request.method == 'POST' and form.validate_on_submit():
+        try:
+            tutor = User.query.get_or_404(tutor_id)
+            subject_id = form.subject_id.data
+            booking_date = form.booking_date.data
+            booking_time = form.booking_time.data
+            
+            # Convert booking_time from time to datetime with timezone
+            booking_datetime = datetime.combine(
+                booking_date,  # Use the same date as booking_date
+                booking_time,  # The time object from the form
+                tzinfo=timezone.utc  # Add UTC timezone
+            )
+
+            subject = Subject.query.get(subject_id)
+            if not subject:
+                flash("Invalid subject selection.", "danger")
+                return redirect(url_for('book_appointment', tutor_id=tutor_id))
+
+            if current_user.role != UserRole.STUDENT:
+                flash("Only students can book appointments.", "danger")
+                return redirect(url_for('explore'))
+
+            # Create the appointment with the datetime object
+            appointment = Appointment(
+                student_id=current_user.id,
+                tutor_id=tutor.id,
+                subject_id=subject.id,
+                booking_date=booking_date,
+                booking_time=booking_datetime,  # Use the combined datetime object
+                last_updated_by=current_user.role
+            )
+
+            db.session.add(appointment)
+            db.session.commit()
+                
+            # Create an alert for the tutor
+            alert = Alert(
+                recipient_id=tutor.id,
+                source=current_user.username,
+                category='book_appointment',
+                subject=f"New Appointment Booked",
+                relevant_date=booking_date,
+                relevant_time=booking_datetime,
+                message=f"booked an appointment with you for {subject.name}. Check your appointments page.",
+            )
+
+            db.session.add(alert)
+            db.session.commit()
+
+            flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert.", "success")
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error booking appointment: {str(e)}", "danger")
+
+    return render_template('book_appointment.html', form=form, tutor=tutor)
 
 
-@app.route('/edit_profile', methods=['GET', 'POST'])
+@app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])
 @login_required
-def edit_profile():
-    form = EditProfileForm(current_user.username)
-    if form.validate_on_submit():
-        current_user.username = form.username.data
-        current_user.about_me = form.about_me.data
+def confirm_appointment(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Ensure the current user is the tutor for this appointment
+    if appointment.last_updated_by == current_user.role:
+        flash("You are not authorized to confirm this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Confirm the appointment and set last_updated_by
+        appointment.confirm(current_user.role)
         db.session.commit()
-        flash('Your changes have been saved.')
-        return redirect(url_for('edit_profile'))
-    elif request.method == 'GET':
-        form.username.data = current_user.username
-        form.about_me.data = current_user.about_me
-    return render_template('edit_profile.html', title='Edit Profile',
-                           form=form)
+        flash(f"Appointment {appointment.id} has been confirmed.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while confirming the appointment: {str(e)}", "danger")
 
-# SUBJECTS SYSTEM
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST'])
+@login_required
+def appointment_update(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+
+    # Ensure the current user is associated with the appointment
+    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
+        flash("You are not authorized to update this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    form = UpdateAppointmentForm()
+
+    if form.validate_on_submit():
+        try:
+            # Combine date and time into a datetime object
+            booking_date = form.booking_date.data
+            booking_time = form.booking_time.data
+            if booking_date and booking_time:
+                booking_datetime = datetime.combine(booking_date, booking_time)
+            else:
+                booking_datetime = appointment.booking_time  # fallback
+
+            # Update the appointment details
+            appointment.update(
+                booking_date=booking_date,
+                booking_time=booking_datetime,
+                user_role=current_user.role
+            )
+            db.session.commit()
+            flash("The appointment has been successfully updated.", "success")
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
+
+    # Pre-fill the form with the current appointment details
+    form.booking_date.data = appointment.booking_date
+    # Set the time part for the form (expects a time object)
+    form.booking_time.data = appointment.booking_time.time() if appointment.booking_time else None
+
+    return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
+
+
+@app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
+@login_required
+def remove_appointment(appointment_id):
+    # Fetch the appointment
+    appointment = Appointment.query.get_or_404(appointment_id)
+    
+    # Check if the current user is associated with the appointment
+    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
+        flash("You are not authorized to cancel this appointment.", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Access all required attributes before deleting the appointment
+        recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
+        subject_name = appointment.subject.name  # Access subject name
+        booking_date = appointment.booking_date
+        booking_time = appointment.booking_time
+
+        # Cancel the appointment and set last_updated_by
+        appointment.cancel(current_user.role)
+        db.session.delete(appointment)
+        db.session.commit()
+        flash("The appointment has been successfully canceled.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
+        return redirect(request.referrer or url_for('index'))
+
+    try:
+        # Create an alert for the recipient
+        alert = Alert(
+            recipient_id=recipient_id,
+            source=current_user.username,
+            category='cancel_appointment',
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time.time() if hasattr(appointment.booking_time, "time") else appointment.booking_time,
+            subject="Appointment Canceled",
+            message=f"canceled their appointment with you for {subject_name}",
+        )
+        db.session.add(alert)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred while sending alert: {str(e)}", "danger")
+
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/api/events')
+@login_required
+def api_events():
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+    events = [
+        {
+            'id': appointment.id,
+            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
+            'start': appointment.booking_time.replace(tzinfo=timezone.utc).isoformat(),
+            'end': (appointment.booking_time.replace(tzinfo=timezone.utc) + timedelta(hours=1)).isoformat(),
+            'status': appointment.status,
+            'url': f"/appointment/{appointment.id}",
+            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
+        }
+        for appointment in appointments
+    ]
+
+    return jsonify(events)
+
+
+@app.route('/api/get_timeslots', methods=['GET'])
+def api_get_timeslots():
+    tutor_id = request.args.get('tutor_id', type=int)
+    selected_date_str = request.args.get('selected_date')
+
+    if not tutor_id or not selected_date_str:
+        return jsonify({'error': 'Missing tutor_id or selected_date'}), 400
+
+    try:
+        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        day_of_week = selected_date.weekday()  # Monday = 0, Sunday = 6
+
+        # Query the Availability model for the tutor's availability on the selected day
+        availabilities = Availability.query.filter_by(
+            tutor_id=tutor_id,
+            day_of_week=day_of_week,
+            is_active=True
+        ).all()
+
+        # Query the Appointment model for booked times on the selected date
+        booked_appointments = Appointment.query.filter_by(
+            tutor_id=tutor_id,
+            booking_date=selected_date
+        ).all()
+
+        # Extract booked times (convert datetime to time objects for comparison)
+        booked_times = [appointment.booking_time.time() if isinstance(appointment.booking_time, datetime) 
+                         else appointment.booking_time for appointment in booked_appointments]
+
+        # Create a list of all hours in the day
+        all_hours = [time(hour, 0) for hour in range(24)]
+
+        # Find available and unavailable times
+        # Find available and unavailable times
+        available_times = []
+        for hour in all_hours:
+            if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
+                available_times.append(hour)
+
+        # Convert time objects to strings for JSON serialization
+        available_time_strings = [t.strftime('%H:%M') for t in available_times]
+
+        return jsonify({'available_times': available_time_strings})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+#######################
+# AVAILABILITY SYSTEM #
+#######################
+
+
+@app.route('/set_availability', methods=['GET', 'POST'])
+@login_required
+def set_availability():
+    if current_user.role != UserRole.TUTOR:
+        flash('Only tutors can set availability.', 'danger')
+        return redirect(url_for('index'))
+
+    form = AvailabilityForm()
+    all_hours = [time(hour, 0) for hour in range(24)]  # Generate hour blocks
+
+    if form.validate_on_submit():
+        try:
+            availability = current_user.add_availability(
+                day_of_week=form.day_of_week.data,
+                start_time=form.start_time.data,
+                end_time=form.end_time.data
+            )
+            db.session.commit()
+            flash(f'Availability added successfully!', 'success')
+            return redirect(url_for('set_availability'))
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('set_availability'))
+
+    # Query availabilities properly
+    query = sa.select(Availability).where(
+        Availability.tutor_id == current_user.id
+    ).order_by(
+        Availability.day_of_week,
+        Availability.start_time
+    )
+    availabilities = db.session.scalars(query).all()
+
+    return render_template(
+        'set_availability.html',
+        title='Set Availability',
+        form=form,
+        availabilities=availabilities,
+        all_hours=all_hours  # Pass the hour blocks to the template
+    )
+
+
+@app.route('/delete_availability/<int:availability_id>', methods=['POST'])
+@login_required
+def delete_availability(availability_id):
+    if current_user.role != UserRole.TUTOR:
+        flash('Only tutors can manage availability.', 'danger')
+        return redirect(url_for('index'))
+
+    query = sa.select(Availability).where(
+        Availability.id == availability_id,
+        Availability.tutor_id == current_user.id
+    )
+    availability = db.session.scalar(query)
+
+    if availability is None:
+        flash('Availability slot not found.', 'danger')
+        return redirect(url_for('set_availability'))
+
+    db.session.delete(availability)
+    db.session.commit()
+    flash('Availability slot deleted.', 'success')
+    return redirect(url_for('set_availability'))
+
+
+
+###################
+# SUBJECTS SYSTEM #
+###################
 
 
 @app.route('/add_subject', methods=['GET', 'POST'])
@@ -308,279 +662,9 @@ def request_class():
     return render_template('request_class.html', title='Request Class', form=form)
 
 
-# APPOINTMENTS SYSTEM
-
-
-@app.route('/book_appointment', methods=['GET', 'POST'])
-@login_required
-def book_appointment():
-    tutor_id = request.args.get('tutor_id', type=int)
-    if not tutor_id:
-        flash("Invalid tutor selected.", "danger")
-        return redirect(url_for('explore'))
-
-    tutor = User.query.get_or_404(tutor_id)
-
-    form = BookAppointmentForm(tutor_id=tutor_id)
-    form.tutor_id.validators = []
-    # Populate the subject dropdown with shared subjects
-    form.subject_id.choices = [
-        (subject.id, f"{subject.name} - {subject.topic}")
-        for subject in tutor.my_subjects if subject in current_user.my_subjects
-    ]
-
-    if request.method == 'POST' and form.validate_on_submit():
-        try:
-            tutor = User.query.get_or_404(tutor_id)
-            subject_id = form.subject_id.data
-            booking_date = form.booking_date.data
-            booking_time = form.booking_time.data
-            
-            # Convert booking_time from time to datetime with timezone
-            booking_datetime = datetime.combine(
-                booking_date,  # Use the same date as booking_date
-                booking_time,  # The time object from the form
-                tzinfo=timezone.utc  # Add UTC timezone
-            )
-
-            subject = Subject.query.get(subject_id)
-            if not subject:
-                flash("Invalid subject selection.", "danger")
-                return redirect(url_for('book_appointment', tutor_id=tutor_id))
-
-            if current_user.role != UserRole.STUDENT:
-                flash("Only students can book appointments.", "danger")
-                return redirect(url_for('explore'))
-
-            # Create the appointment with the datetime object
-            appointment = Appointment(
-                student_id=current_user.id,
-                tutor_id=tutor.id,
-                subject_id=subject.id,
-                booking_date=booking_date,
-                booking_time=booking_datetime,  # Use the combined datetime object
-                last_updated_by=current_user.role
-            )
-
-            db.session.add(appointment)
-            db.session.commit()
-
-            # Create an alert for the tutor
-            alert = Alert(
-                recipient_id=tutor.id,
-                source=current_user.username,
-                category='book_appointment',
-                subject=f"New Appointment Booked",
-                message=f"booked an appointment with you for {subject.name} on {booking_date} at {booking_time}. Check your appointments page.",
-            )
-
-            db.session.add(alert)
-            db.session.commit()
-
-            flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert.", "success")
-            return redirect(url_for('index'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error booking appointment: {str(e)}", "danger")
-
-    return render_template('book_appointment.html', form=form, tutor=tutor)
-
-
-@app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])
-@login_required
-def confirm_appointment(appointment_id):
-    # Fetch the appointment
-    appointment = Appointment.query.get_or_404(appointment_id)
-
-    # Ensure the current user is the tutor for this appointment
-    if appointment.last_updated_by == current_user.role:
-        flash("You are not authorized to confirm this appointment.", "danger")
-        return redirect(request.referrer or url_for('index'))
-
-    try:
-        # Confirm the appointment and set last_updated_by
-        appointment.confirm(current_user.role)
-        db.session.commit()
-        flash(f"Appointment {appointment.id} has been confirmed.", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while confirming the appointment: {str(e)}", "danger")
-
-    return redirect(request.referrer or url_for('index'))
-
-
-@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST'])
-@login_required
-def appointment_update(appointment_id):
-    # Fetch the appointment
-    appointment = Appointment.query.get_or_404(appointment_id)
-
-    # Ensure the current user is associated with the appointment
-    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
-        flash("You are not authorized to update this appointment.", "danger")
-        return redirect(request.referrer or url_for('index'))
-
-    form = UpdateAppointmentForm()
-
-    if form.validate_on_submit():
-        try:
-            # Update the appointment details
-            appointment.update(
-                booking_date=form.booking_date.data,
-                booking_time=form.booking_time.data,
-                user_role=current_user.role
-            )
-            db.session.commit()
-            flash("The appointment has been successfully updated.", "success")
-            return redirect(url_for('index'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
-
-    # Pre-fill the form with the current appointment details
-    form.booking_date.data = appointment.booking_date
-    form.booking_time.data = appointment.booking_time
-
-    return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
-
-
-@app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
-@login_required
-def remove_appointment(appointment_id):
-    # Fetch the appointment
-    appointment = Appointment.query.get_or_404(appointment_id)
-    
-    # Check if the current user is associated with the appointment
-    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
-        flash("You are not authorized to cancel this appointment.", "danger")
-        return redirect(request.referrer or url_for('index'))
-
-    try:
-        # Access all required attributes before deleting the appointment
-        recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
-        subject_name = appointment.subject.name  # Access subject name
-        booking_date = appointment.booking_date
-        booking_time = appointment.booking_time
-
-        # Cancel the appointment and set last_updated_by
-        appointment.cancel(current_user.role)
-        db.session.delete(appointment)
-        db.session.commit()
-        flash("The appointment has been successfully canceled.", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
-        return redirect(request.referrer or url_for('index'))
-
-    try:
-        # Create an alert for the recipient
-        alert = Alert(
-            recipient_id=recipient_id,
-            source=current_user.username,
-            category='cancel_appointment',
-            relevant_date=appointment.booking_date,
-            relevant_time=appointment.booking_time,
-            subject="Appointment Canceled",
-            message=f"canceled their appointment with you for {subject_name}",
-        )
-        db.session.add(alert)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while sending alert: {str(e)}", "danger")
-
-    return redirect(request.referrer or url_for('index'))
-
-
-# DEBUG
-
-# debug page to make sure appointments are adding and filtering correctly
-@app.route('/appointments', methods=['GET', 'POST'])
-@login_required
-def appointments():
-    appointments = Appointment.query.order_by(Appointment.created_date)
-    return render_template('appointments.html', title='Appointments', appointments=appointments)
-
-# debug page to make sure subjects are adding and filtering correctly
-@app.route('/subjects', methods=['GET', 'POST'])
-@login_required
-def subjects():
-    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
-    return render_template('subjects.html', title='Subjects', subjects=subjects)
-
-
-# DEVELOPMENT
-
-@app.route('/api/events')
-@login_required
-def api_events():
-    # Query appointments for the current user
-    appointments = Appointment.query.filter(
-        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
-    ).all()
-
-    # Convert appointments to FullCalendar's event format
-    events = [
-        {
-            'id': appointment.id,  # Include the appointment ID
-            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': f"{appointment.booking_date}T{appointment.booking_time}",  # Combine date and time
-            'end': f"{appointment.booking_date}T{appointment.booking_time}",  # Optional: Add end time if needed
-            'status': appointment.status,  # Include the status of the appointment
-            'url': f"/appointment/{appointment.id}",  # Link to appointment details
-            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",  # Add a description
-        }
-        for appointment in appointments
-    ]
-
-    return jsonify(events)
-
-
-@app.route('/api/get_timeslots', methods=['GET'])
-def api_get_timeslots():
-    tutor_id = request.args.get('tutor_id', type=int)
-    selected_date_str = request.args.get('selected_date')
-
-    if not tutor_id or not selected_date_str:
-        return jsonify({'error': 'Missing tutor_id or selected_date'}), 400
-
-    try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        day_of_week = selected_date.weekday()  # Monday = 0, Sunday = 6
-
-        # Query the Availability model for the tutor's availability on the selected day
-        availabilities = Availability.query.filter_by(
-            tutor_id=tutor_id,
-            day_of_week=day_of_week,
-            is_active=True
-        ).all()
-
-        # Query the Appointment model for booked times on the selected date
-        booked_appointments = Appointment.query.filter_by(
-            tutor_id=tutor_id,
-            booking_date=selected_date
-        ).all()
-
-        # Extract booked times (convert datetime to time objects for comparison)
-        booked_times = [appointment.booking_time.time() if isinstance(appointment.booking_time, datetime) 
-                         else appointment.booking_time for appointment in booked_appointments]
-
-        # Create a list of all hours in the day
-        all_hours = [time(hour, 0) for hour in range(24)]
-
-        # Find available and unavailable times
-        # Find available and unavailable times
-        available_times = []
-        for hour in all_hours:
-            if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
-                available_times.append(hour)
-
-        # Convert time objects to strings for JSON serialization
-        available_time_strings = [t.strftime('%H:%M') for t in available_times]
-
-        return jsonify({'available_times': available_time_strings})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+###################
+# MESSAGES SYSTEM #
+###################
 
 @app.route('/send_message/<recipient>', methods=['GET', 'POST'])
 @login_required
@@ -659,69 +743,27 @@ def notifications():
     return jsonify(combined)
 
 
-@app.route('/set_availability', methods=['GET', 'POST'])
+
+
+
+#########
+# DEBUG #
+#########
+
+
+# debug page to make sure appointments are adding and filtering correctly
+@app.route('/appointments', methods=['GET', 'POST'])
 @login_required
-def set_availability():
-    if current_user.role != UserRole.TUTOR:
-        flash('Only tutors can set availability.', 'danger')
-        return redirect(url_for('index'))
+def appointments():
+    appointments = Appointment.query.order_by(Appointment.created_date)
+    return render_template('appointments.html', title='Appointments', appointments=appointments)
 
-    form = AvailabilityForm()
-    all_hours = [time(hour, 0) for hour in range(24)]  # Generate hour blocks
-
-    if form.validate_on_submit():
-        try:
-            availability = current_user.add_availability(
-                day_of_week=form.day_of_week.data,
-                start_time=form.start_time.data,
-                end_time=form.end_time.data
-            )
-            db.session.commit()
-            flash(f'Availability added successfully!', 'success')
-            return redirect(url_for('set_availability'))
-        except ValueError as e:
-            flash(str(e), 'danger')
-            return redirect(url_for('set_availability'))
-
-    # Query availabilities properly
-    query = sa.select(Availability).where(
-        Availability.tutor_id == current_user.id
-    ).order_by(
-        Availability.day_of_week,
-        Availability.start_time
-    )
-    availabilities = db.session.scalars(query).all()
-
-    return render_template(
-        'set_availability.html',
-        title='Set Availability',
-        form=form,
-        availabilities=availabilities,
-        all_hours=all_hours  # Pass the hour blocks to the template
-    )
-
-
-@app.route('/delete_availability/<int:availability_id>', methods=['POST'])
+# debug page to make sure subjects are adding and filtering correctly
+@app.route('/subjects', methods=['GET', 'POST'])
 @login_required
-def delete_availability(availability_id):
-    if current_user.role != UserRole.TUTOR:
-        flash('Only tutors can manage availability.', 'danger')
-        return redirect(url_for('index'))
-
-    query = sa.select(Availability).where(
-        Availability.id == availability_id,
-        Availability.tutor_id == current_user.id
-    )
-    availability = db.session.scalar(query)
-
-    if availability is None:
-        flash('Availability slot not found.', 'danger')
-        return redirect(url_for('set_availability'))
-
-    db.session.delete(availability)
-    db.session.commit()
-    flash('Availability slot deleted.', 'success')
-    return redirect(url_for('set_availability'))
+def subjects():
+    subjects = Subject.query.order_by(Subject.name.collate("NOCASE")).all()
+    return render_template('subjects.html', title='Subjects', subjects=subjects)
 
 
 @app.route('/test_availability', methods=['GET', 'POST'])

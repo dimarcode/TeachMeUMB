@@ -6,4 +6,30 @@
     <p>Updating appointment for {{ appointment.subject.name }} with {{ appointment.tutor.username }}</p>
     {{ wtf.quick_form(form) }}
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Convert UTC time in the input to local time for display
+    const timeInput = document.getElementById('booking_time');
+    if (timeInput && timeInput.value) {
+        // Assume value is "HH:MM:SS" or "HH:MM"
+        let utc = moment.utc(timeInput.value, 'HH:mm');
+        let local = utc.local().format('HH:mm');
+        timeInput.value = local;
+    }
+
+    // 2. On submit, convert local time back to UTC for backend
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (timeInput && timeInput.value) {
+                let local = moment(timeInput.value, 'HH:mm');
+                let utc = local.utc().format('HH:mm');
+                timeInput.value = utc;
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

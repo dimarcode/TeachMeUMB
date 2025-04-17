@@ -3,12 +3,14 @@
     
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var calendarEl = document.getElementById('calendar');
+document.addEventListener('DOMContentLoaded', function () {
+    var calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return; // Prevent errors if the element is missing
 
-            // Pass events from the server-side to FullCalendar
-            var events = {{ events|tojson|safe }} || []; // Fallback to an empty array if events is None
-
+    // Fetch events from the API endpoint
+    fetch('/api/events')
+        .then(response => response.json())
+        .then(events => {
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 themeSystem: 'bootstrap5',
@@ -20,49 +22,49 @@
                     right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
                 },
                 eventClick: function(info) {
-                // Prevent default behavior
-                info.jsEvent.preventDefault();
+                    info.jsEvent.preventDefault();
 
-                // Get modal elements
-                const modalTitle = document.getElementById('modalTitle');
-                const modalBody = document.getElementById('modalBody');
-                const modalFooter = document.getElementById('modalFooter');
+                    // Get modal elements
+                    const modalTitle = document.getElementById('modalTitle');
+                    const modalBody = document.getElementById('modalBody');
+                    const modalFooter = document.getElementById('modalFooter');
 
-                // Format the appointment time
-                const appointmentDate = info.event.start.toLocaleDateString();
-                const appointmentTime = info.event.start.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
+                    // Format the appointment time
+                    const appointmentDate = info.event.start.toLocaleDateString('en-US');
+                    const appointmentTime = info.event.start.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit'
+                    });
 
-                // Get the course name from the event title or subject property
-                const courseName = info.event.title
+                    // Get the course name from the event title or subject property
+                    const courseName = info.event.title;
 
-                // Set custom formatted content
-                modalTitle.textContent = courseName;
-                modalBody.innerHTML = `
-                    <div class="appointment-details">
-                        <p><strong>Date:</strong> ${appointmentDate}</p>
-                        <p><strong>Time:</strong> ${appointmentTime}</p>
-                        <p><strong>Status:</strong> ${info.event.extendedProps.status}</p>
-                        ${info.event.extendedProps.notes ? 
-                            `<p><strong>Additional Notes:</strong> ${info.event.extendedProps.notes}</p>` 
-                            : ''}
-                    </div>
-                `;
-                modalFooter.innerHTML = `
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                `;
+                    // Set custom formatted content
+                    modalTitle.textContent = courseName;
+                    modalBody.innerHTML = `
+                        <div class="appointment-details">
+                            <p><strong>Date:</strong> ${appointmentDate}</p>
+                            <p><strong>Time:</strong> ${appointmentTime}</p>
+                            <p><strong>Status:</strong> ${info.event.extendedProps.status}</p>
+                            ${info.event.extendedProps.notes ? 
+                                `<p><strong>Additional Notes:</strong> ${info.event.extendedProps.notes}</p>` 
+                                : ''}
+                        </div>
+                    `;
+                    modalFooter.innerHTML = `
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    `;
 
-                // Show the modal
-                const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
-                eventModal.show();
-            }
+                    // Show the modal
+                    const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+                    eventModal.show();
+                }
             });
 
             calendar.render();
         });
-    </script>
+});
+</script>
     <h1>Hi, {{ current_user.username }}!</h1>
 
     <!-- Calendar Section -->

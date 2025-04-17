@@ -217,7 +217,7 @@ class Alert(db.Model):
     timestamp: so.Mapped[datetime] = so.mapped_column(
         index=True, default=lambda: datetime.now(timezone.utc))
     relevant_date = db.Column(db.Date)
-    relevant_time = db.Column(db.Time)
+    relevant_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
     source: so.Mapped[str] = so.mapped_column(sa.String(140)) # what caused the alert
     recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True) # who is receiving the alert
 
