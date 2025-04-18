@@ -174,8 +174,10 @@ class Appointment(db.Model):
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
 
     reviews: so.WriteOnlyMapped['Review'] = so.relationship(
-        back_populates='appointment', cascade='all, delete-orphan')
-    
+        back_populates='appointment',
+        passive_deletes=True  # optional, but recommended for ondelete to work
+    )
+
     def confirm(self, user_role):
         """Confirm the appointment."""
         self.status = 'confirmed'
@@ -204,7 +206,9 @@ class Appointment(db.Model):
 
 class Review(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    appointment_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('appointment.id'), nullable=False)
+    appointment_id: so.Mapped[int] = so.mapped_column(
+        sa.ForeignKey('appointment.id', ondelete='SET NULL'), nullable=True
+    )
     student_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
     tutor_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
     timestamp: so.Mapped[datetime] = so.mapped_column(default=lambda: datetime.now(timezone.utc))
