@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-    
+    {% if homepage_message %}
+    <div class="alert alert-{{ homepage_message.type }} text-center mt-3" role="alert">
+        {{ homepage_message.text }}<a href="{{ homepage_message.link_url }}" class="alert-link"> {{ homepage_message.link_text }}</a>.
+    </div>
+    {% endif %}
+
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

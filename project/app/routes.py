@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, time
+from datetime import datetime, timezone, time, date,timedelta
 from urllib.parse import urlsplit
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
@@ -36,8 +36,8 @@ def index():
         {
             'id': appointment.id,
             'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': f"{appointment.booking_date}T{appointment.booking_time}",
-            'end': f"{appointment.booking_date}T{appointment.booking_time}",
+            'start': appointment.booking_time.isoformat(),
+            'end': (appointment.booking_time + timedelta(hours=1)).isoformat(),
             'status': appointment.status,
             'url': f"/appointment/{appointment.id}",
             'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
@@ -63,6 +63,31 @@ def index():
         RequestedSubject.student_id == current_user.id
     ).all()
 
+    # Homepage message if student has no subjects or tutor has no availability
+    homepage_message = None
+
+    if current_user.role == UserRole.STUDENT and not current_user.my_subjects:
+        homepage_message = {
+            'type': 'warning',
+            'text': 'You have not added any subjects yet.',
+            'link_text': 'Add subjects now',
+            'link_url': url_for('add_subject')
+        }
+
+    elif current_user.role == UserRole.TUTOR:
+        has_availability = db.session.query(Availability).filter_by(
+            tutor_id=current_user.id,
+            is_active=True
+        ).first()
+        if not has_availability:
+            homepage_message = {
+                'type': 'warning',
+                'text': 'You have not set your availability yet.',
+                'link_text': 'Set your availability now',
+                'link_url': url_for('set_availability')
+            }
+
+
     return render_template(
         'index.html',
         pending_needs_approval=pending_needs_approval,
@@ -72,6 +97,7 @@ def index():
         form=form,
         UserRole=UserRole,
         events=events or [],
+        homepage_message=homepage_message
     )
 
 
@@ -154,37 +180,78 @@ def reset_password(token):
 @app.route('/explore')
 @login_required
 def explore():
-    form= BookAppointmentForm()
-    if current_user.role == UserRole.STUDENT:
-        # Find tutors who share subjects with the current user
-        tutors = User.query.filter(
-            User.role == UserRole.TUTOR,  # Filter for tutors
-            User.id != current_user.id,   # Exclude current user
-            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
-        ).all()
+    form = BookAppointmentForm()
 
-        # Group tutors by subject
-        tutors_by_subject = {}
-        for subject in current_user.my_subjects:
-            subject_tutors = User.query.filter(
+    if current_user.role == UserRole.STUDENT:
+        # Get selected subject IDs from the checkbox form
+        subject_ids = request.args.getlist('subject_ids', type=int)
+
+        if subject_ids:
+            # Show tutors who teach any of the selected subjects
+            tutors = User.query.filter(
                 User.role == UserRole.TUTOR,
                 User.id != current_user.id,
-                User.my_subjects.contains(subject)
+                User.my_subjects.any(Subject.id.in_(subject_ids))
             ).all()
-            if subject_tutors:
-                tutors_by_subject[subject] = subject_tutors
+        else:
+            # Show tutors who share any subject with the student
+            tutors = User.query.filter(
+                User.role == UserRole.TUTOR,
+                User.id != current_user.id,
+                User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))
+            ).all()
+
+
+        weeks_ahead = 4
+        filtered_tutors = []
+
+        for tutor in tutors:
+            availabilities = Availability.query.filter_by(
+                tutor_id=tutor.id,
+                is_active=True
+            ).all()
+
+            has_open_slot = False
+
+            for availability in availabilities:
+                for week_offset in range(weeks_ahead):
+                    # Get future date for this availability's weekday
+                    days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
+                    check_date = date.today() + timedelta(days=days_ahead)
+
+                    # Get booked appointments for that specific day
+                    booked_appointments = Appointment.query.filter_by(
+                        tutor_id=tutor.id,
+                        booking_date=check_date
+                    ).with_entities(Appointment.booking_time).all()
+
+                    booked_hours = {bt.booking_time.hour for bt in booked_appointments}
+
+                    # Check if at least one hour is still open
+                    for hour in range(availability.start_time.hour, availability.end_time.hour):
+                        if hour not in booked_hours:
+                            has_open_slot = True
+                            break
+
+                    if has_open_slot:
+                        break
+
+                if has_open_slot:
+                    break
+
+            if has_open_slot:
+                filtered_tutors.append(tutor)
 
         return render_template(
             'explore.html',
             title='Explore',
-            tutors=tutors,
+            tutors=filtered_tutors,
             form=form,
-            tutors_by_subject=tutors_by_subject,
-            UserRole = UserRole
+            UserRole=UserRole
         )
 
     elif current_user.role == UserRole.TUTOR:
-        # Query all students who have requested classes
+        # Show requested classes for tutors
         requested_classes = db.session.query(RequestedSubject, User, Subject).join(
             User, RequestedSubject.student_id == User.id
         ).join(
@@ -196,7 +263,7 @@ def explore():
             title='Explore',
             form=form,
             requested_classes=requested_classes,
-            UserRole = UserRole
+            UserRole=UserRole
         )
 
 
@@ -335,6 +402,13 @@ def book_appointment():
             subject_id = form.subject_id.data
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
+            
+            # Convert booking_time from time to datetime with timezone
+            booking_datetime = datetime.combine(
+                booking_date,  # Use the same date as booking_date
+                booking_time,  # The time object from the form
+                tzinfo=timezone.utc  # Add UTC timezone
+            )
 
             subject = Subject.query.get(subject_id)
             if not subject:
@@ -345,32 +419,52 @@ def book_appointment():
                 flash("Only students can book appointments.", "danger")
                 return redirect(url_for('explore'))
 
-            # Create the appointment
+            # Create the appointment with the datetime object
             appointment = Appointment(
                 student_id=current_user.id,
                 tutor_id=tutor.id,
                 subject_id=subject.id,
                 booking_date=booking_date,
-                booking_time=booking_time,
-                last_updated_by=current_user.role
+                booking_time=booking_datetime,  # Use the combined datetime object
+                last_updated_by=current_user.role,
+                location=form.location.data
             )
 
             db.session.add(appointment)
             db.session.commit()
 
             # Create an alert for the tutor
+            location_display = form.location.data.replace("_", " ").title()
+
+
             alert = Alert(
                 recipient_id=tutor.id,
                 source=current_user.username,
                 category='book_appointment',
-                subject=f"New Appointment Booked",
-                message=f"booked an appointment with you for {subject.name} on {booking_date} at {booking_time}. Check your appointments page.",
+                subject="New Appointment Booked",
+                message=(
+                    f"booked an appointment with you for <strong>{subject.name}</strong> on "
+                    f"<strong>{booking_date}</strong> at <strong>{booking_time}</strong> "
+                    f"in <strong>{location_display}</strong>. Check your appointments page."
+                ),
             )
+
+
 
             db.session.add(alert)
             db.session.commit()
 
-            flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert.", "success")
+            location_display = form.location.data.replace("_", " ").title()
+
+            flash(
+                f"Appointment booked with <strong>{tutor.username}</strong> for "
+                f"<strong>{subject.name}</strong> on <strong>{booking_date}</strong> at "
+                f"<strong>{booking_time}</strong> in <strong>{location_display}</strong>. "
+                "They have been sent an alert.",
+                "success"
+            )
+
+            # Redirect to the index page or wherever you want after booking
             return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
@@ -413,16 +507,21 @@ def appointment_update(appointment_id):
         flash("You are not authorized to update this appointment.", "danger")
         return redirect(request.referrer or url_for('index'))
 
-    form = UpdateAppointmentForm()
+    form = UpdateAppointmentForm(obj=appointment)
+
 
     if form.validate_on_submit():
         try:
-            # Update the appointment details
-            appointment.update(
-                booking_date=form.booking_date.data,
-                booking_time=form.booking_time.data,
-                user_role=current_user.role
-            )
+            # Combine booking_date and booking_time into full datetime so that it can be saved in the database when updating
+            booking_datetime = datetime.combine(
+                form.booking_date.data,
+                form.booking_time.data
+            ).replace(tzinfo=timezone.utc)
+
+            appointment.booking_date = form.booking_date.data
+            appointment.booking_time = booking_datetime
+            appointment.location = form.location.data
+            appointment.last_updated_by = current_user.role
             db.session.commit()
             flash("The appointment has been successfully updated.", "success")
             return redirect(url_for('index'))
@@ -430,9 +529,6 @@ def appointment_update(appointment_id):
             db.session.rollback()
             flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
 
-    # Pre-fill the form with the current appointment details
-    form.booking_date.data = appointment.booking_date
-    form.booking_time.data = appointment.booking_time
 
     return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
 
@@ -554,19 +650,24 @@ def api_get_timeslots():
             booking_date=selected_date
         ).all()
 
-        # Extract booked times
-        booked_times = [appointment.booking_time for appointment in booked_appointments]
+        # Extract booked times (convert datetime to time objects for comparison)
+        booked_times = [appointment.booking_time.time() if isinstance(appointment.booking_time, datetime) 
+                         else appointment.booking_time for appointment in booked_appointments]
 
         # Create a list of all hours in the day
         all_hours = [time(hour, 0) for hour in range(24)]
 
+        # Find available and unavailable times
         # Find available and unavailable times
         available_times = []
         for hour in all_hours:
             if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
                 available_times.append(hour)
 
-        return jsonify({'available_times': [t.strftime('%H:%M') for t in available_times]})
+        # Convert time objects to strings for JSON serialization
+        available_time_strings = [t.strftime('%H:%M') for t in available_times]
+
+        return jsonify({'available_times': available_time_strings})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -33,4 +33,9 @@
         {% else %}
             <p>You haven't enrolled in any classes yet.</p>
         {% endif %}
+
+    <form action="/send-email" method="post">
+        {{ form.hidden_tag() }} <!-- Automatically includes the CSRF token -->
+        {{ form.submit() }}
+    </form>
 {% endblock %}

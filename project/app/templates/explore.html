@@ -5,6 +5,42 @@
     <!-- Calendar -->
 <!-- Student View -->    
     {% if current_user.role == UserRole.STUDENT %}
+
+        <!-- Subject Filter Form -->
+        <form method="GET" action="{{ url_for('explore') }}">
+            <div class="mb-3">
+                <label><strong>Filter by Your Subjects</strong></label><br>
+                {% for subject in current_user.my_subjects %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox"
+                            name="subject_ids" value="{{ subject.id }}"
+                            id="subject-{{ subject.id }}"
+                            {% if subject.id|string in request.args.getlist('subject_ids') %}checked{% endif %}>
+                        <label class="form-check-label" for="subject-{{ subject.id }}">
+                            {{ subject.name }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+
+        {% set selected_ids = request.args.getlist('subject_ids') | map('int') | list %}
+        {% set selected_names = [] %}
+
+        {% for subject in current_user.my_subjects %}
+            {% if subject.id in selected_ids %}
+                {% set _ = selected_names.append(subject.name) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if selected_names %}
+            <p class="mt-2">
+                Showing tutors for: <strong>{{ selected_names | join(', ') }}</strong>
+            </p>
+        {% endif %}
+
+
         <div class="mt-5 text-center">
             <a href="{{ url_for('request_class') }}" class="btn btn-warning">
                 I can't find any tutors for my class
@@ -32,8 +68,8 @@
                 {% endfor %}
             </div>
         </div>
-    {% endif %}
-        
+        {% endif %}
+
     {% elif current_user.role == UserRole.TUTOR %}
     <!-- Tutor View -->
     <div class="mt-5">
@@ -57,10 +93,9 @@
                         <td>{{ student.about_me }}</td>
                         <td>{{ subject.name }} - {{ subject.topic }}</td>
                         <td>
-                            <!-- Check if the tutor already has the class -->
                             {% if subject not in current_user.my_subjects %}
                                 <form action="{{ url_for('add_subject') }}" method="post" style="display:inline;">
-                                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                                    {{ form.hidden_tag() }}
                                     <input type="hidden" name="subject_id" value="{{ subject.id }}">
                                     <button type="submit" class="btn btn-success btn-sm">Add Class</button>
                                 </form>
@@ -76,6 +111,6 @@
             <p>No students have requested classes yet.</p>
         {% endif %}
     </div>
-{% endif %}
+    {% endif %}
 </div>
 {% endblock %}

@@ -161,10 +161,12 @@ class Appointment(db.Model):
     tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
 
-    created_date = db.Column(db.DateTime(timezone=True), default=func.now(), nullable=False)
+    created_date: so.Mapped[datetime] = so.mapped_column(index=True, default=lambda: datetime.now(timezone.utc))
     booking_date = db.Column(db.Date, nullable=False)
-    booking_time = db.Column(db.Time, nullable=False)
+    booking_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
     status = db.Column(db.String(20), default='confirmed', nullable=False)
+    location: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False)
+
 
     # Track who last updated the appointment
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
