@@ -9,9 +9,9 @@ import sqlalchemy as sa
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
 BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, MessageForm, ResetPasswordRequestForm, \
-ResetPasswordForm, AvailabilityForm, TestAvailabilityForm
+ResetPasswordForm, AvailabilityForm, TestAvailabilityForm, BeginAppointmentForm, ReviewAppointmentForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
-Notification, Alert, Availability
+Notification, Alert, Availability, Review
 from app.email import send_password_reset_email
 
 
@@ -51,6 +51,7 @@ def index():
 
     all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
     pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
+    completed_appointments = [appointment for appointment in all_appointments if appointment.status == 'completed']
     confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
     pending_needs_approval = [
         appointment for appointment in pending_appointments
@@ -69,6 +70,7 @@ def index():
         pending_needs_approval=pending_needs_approval,
         pending_waiting_for_other=pending_waiting_for_other,
         confirmed_appointments=confirmed_appointments,
+        completed_appointments=completed_appointments,
         requested_subjects=requested_subjects,
         form=form,
         UserRole=UserRole,
@@ -318,6 +320,41 @@ def book_appointment():
             flash(f"Error booking appointment: {str(e)}", "danger")
 
     return render_template('book_appointment.html', form=form, tutor=tutor)
+
+
+@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST'])
+@login_required
+def begin_appointment(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    form = BeginAppointmentForm()
+    if form.validate_on_submit():
+        appointment.actual_start_time = datetime.combine(appointment.booking_date, form.start_time.data)
+        appointment.actual_end_time = datetime.combine(appointment.booking_date, form.end_time.data)
+
+        db.session.commit()
+        return redirect(url_for('review_appointment', appointment_id=appointment.id))
+    return render_template('begin_appointment.html', form=form, appointment=appointment)
+
+
+@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST'])
+@login_required
+def review_appointment(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    form = ReviewAppointmentForm()
+    if form.validate_on_submit():
+        review = Review(
+            appointment_id=appointment.id,
+            student_id=current_user.id,
+            tutor_id=appointment.tutor_id,
+            stars=form.stars.data,
+            text=form.text.data
+        )
+        db.session.add(review)
+        appointment.status = 'completed'
+        db.session.commit()
+        flash(f"Your appointment with {appointment.tutor.username} has been successfully completed! Thanks for your review.", "success")
+        return redirect(url_for('index'))
+    return render_template('review_appointment.html', form=form, appointment=appointment)
 
 
 @app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])

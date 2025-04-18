@@ -86,9 +86,11 @@ class User(UserMixin, db.Model):
         back_populates='user')
     alerts_received: so.WriteOnlyMapped['Alert'] = so.relationship(
         foreign_keys="Alert.recipient_id", back_populates="recipient", lazy="dynamic")
-
     availabilities: so.WriteOnlyMapped['Availability'] = so.relationship(back_populates='tutor', cascade='all, delete-orphan')
-
+    reviews_left: so.WriteOnlyMapped['Review'] = so.relationship(
+        foreign_keys='Review.student_id', back_populates='student', cascade='all, delete-orphan')
+    reviews_received: so.WriteOnlyMapped['Review'] = so.relationship(
+        foreign_keys='Review.tutor_id', back_populates='tutor', cascade='all, delete-orphan')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -164,11 +166,16 @@ class Appointment(db.Model):
     created_date: so.Mapped[datetime] = so.mapped_column(index=True, default=lambda: datetime.now(timezone.utc))
     booking_date = db.Column(db.Date, nullable=False)
     booking_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
+    actual_start_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
+    actual_end_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
     status = db.Column(db.String(20), default='confirmed', nullable=False)
 
     # Track who last updated the appointment
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
 
+    reviews: so.WriteOnlyMapped['Review'] = so.relationship(
+        back_populates='appointment', cascade='all, delete-orphan')
+    
     def confirm(self, user_role):
         """Confirm the appointment."""
         self.status = 'confirmed'
@@ -193,6 +200,24 @@ class Appointment(db.Model):
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
                 f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")
+
+
+class Review(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    appointment_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('appointment.id'), nullable=False)
+    student_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
+    tutor_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
+    timestamp: so.Mapped[datetime] = so.mapped_column(default=lambda: datetime.now(timezone.utc))
+    stars: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)  # 1-5
+    text: so.Mapped[Optional[str]] = so.mapped_column(sa.Text, nullable=True)
+
+    # Relationships
+    appointment: so.Mapped['Appointment'] = so.relationship(back_populates='reviews')
+    student: so.Mapped['User'] = so.relationship(foreign_keys=[student_id], back_populates='reviews_left')
+    tutor: so.Mapped['User'] = so.relationship(foreign_keys=[tutor_id], back_populates='reviews_received')
+
+    def __repr__(self):
+        return f"<Review {self.id} by Student {self.student_id} for Tutor {self.tutor_id} - {self.stars} stars>"
 
 
 class Post(db.Model):

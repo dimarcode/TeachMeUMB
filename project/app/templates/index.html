@@ -75,29 +75,9 @@ document.addEventListener('DOMContentLoaded', function () {
         <div class="mt-5">
             {% if pending_needs_approval %}
                 <h3>Appointments Waiting for Your Approval</h3>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            {% if current_user.role == UserRole.TUTOR %}
-                                <th>Student</th>
-                            {% else %}
-                                <th>Tutor</th>
-                            {% endif %}
-                            <th>Subject</th>
-                            <th>Booked On</th>
-                            <th>Appointment Date</th>
-                            <th>Appointment Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for appointment in pending_needs_approval %}
-                            {% include '_appointment.html' with context %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    {% for appointment in pending_needs_approval %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
             {% endif %}
         </div>
 
@@ -127,58 +107,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 {% else %}
                     <h3>Appointments Waiting for the Tutor's Approval</h3>
                 {% endif %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            {% if current_user.role == UserRole.TUTOR %}
-                                <th>Student</th>
-                            {% else %}
-                                <th>Tutor</th>
-                            {% endif %}
-                            <th>Subject</th>
-                            <th>Booked On</th>
-                            <th>Appointment Date</th>
-                            <th>Appointment Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for appointment in pending_waiting_for_other %}
-                            {% include '_appointment.html' with context %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    {% for appointment in pending_waiting_for_other %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
             {% endif %}
         </div>
         <!-- Confirmed Appointments Section -->
         <div class="mt-5">
             {% if confirmed_appointments %}
                 <h3>Your Confirmed Appointments</h3>
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            {% if current_user.role == UserRole.TUTOR %}
-                                <th>Student</th>
-                            {% else %}
-                                <th>Tutor</th>
-                            {% endif %}
-                            <th>Subject</th>
-                            <th>Booked On</th>
-                            <th>Appointment Date</th>
-                            <th>Appointment Time</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for appointment in confirmed_appointments %}
-                            {% include '_appointment.html' with context %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    {% for appointment in confirmed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if completed_appointments %}
+                <h3>Your Completed Appointments</h3>
+                    {% for appointment in completed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
             {% endif %}
         </div>
     {% else %}

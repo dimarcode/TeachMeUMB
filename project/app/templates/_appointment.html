@@ -36,7 +36,12 @@
                                 <button type="submit" class="btn btn-success btn-sm mb-1">Confirm</button>
                             </form>
                         {% endif %}
-                        <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
+                        {% if appointment.status == 'confirmed' and current_user.role == UserRole.TUTOR %}
+                            <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success">
+                                Begin Appointment
+                            </a>
+                        {% endif %}
+                            <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
                             {{ form.hidden_tag() }}
                             <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
                         </form>

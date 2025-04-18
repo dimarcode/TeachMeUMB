@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, HiddenField, DateField, TimeField
-from wtforms.validators import ValidationError, DataRequired, InputRequired, Email, EqualTo, Length, Regexp
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, HiddenField, DateField, TimeField, IntegerField, TextAreaField
+from wtforms.validators import ValidationError, DataRequired, InputRequired, Email, EqualTo, Length, Regexp, NumberRange, Optional
 import sqlalchemy as sa
 from app import db
 from app.models import User, UserRole, Subject, user_subject
@@ -121,6 +121,18 @@ class MessageForm(FlaskForm):
     message = TextAreaField(('Message'), validators=[
         DataRequired(), Length(min=1, max=140)])
     submit = SubmitField('Submit')
+
+
+class BeginAppointmentForm(FlaskForm):
+    start_time = TimeField('Actual Start Time', validators=[DataRequired()])
+    end_time = TimeField('Actual End Time', validators=[DataRequired()])
+    submit = SubmitField('Finish')
+
+
+class ReviewAppointmentForm(FlaskForm):
+    stars = IntegerField('Stars (1-5)', validators=[DataRequired(), NumberRange(min=1, max=5)])
+    text = TextAreaField('Review', validators=[Optional()])
+    submit = SubmitField('Submit Review')
 
 
 class AvailabilityForm(FlaskForm):
