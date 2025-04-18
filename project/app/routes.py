@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, time, timedelta
 from urllib.parse import urlsplit
+import pytz
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
@@ -446,7 +447,7 @@ def api_events():
             'id': appointment.id,
             'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
             'start': appointment.booking_time.replace(tzinfo=timezone.utc).isoformat(),
-            'end': (appointment.booking_time.replace(tzinfo=timezone.utc) + timedelta(hours=1)).isoformat(),
+            'end': (appointment.booking_time.replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat(),
             'status': appointment.status,
             'url': f"/appointment/{appointment.id}",
             'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
@@ -462,46 +463,62 @@ def api_get_timeslots():
     tutor_id = request.args.get('tutor_id', type=int)
     selected_date_str = request.args.get('selected_date')
 
+    availabilities = []
+    available_times = []
+    unavailable_times = []
+
     if not tutor_id or not selected_date_str:
         return jsonify({'error': 'Missing tutor_id or selected_date'}), 400
 
-    try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        day_of_week = selected_date.weekday()  # Monday = 0, Sunday = 6
+    selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+    day_of_week = selected_date.weekday()  # Monday=0
 
-        # Query the Availability model for the tutor's availability on the selected day
-        availabilities = Availability.query.filter_by(
-            tutor_id=tutor_id,
-            day_of_week=day_of_week,
-            is_active=True
-        ).all()
+    # Get all availabilities for this tutor on this weekday
+    availabilities = Availability.query.filter_by(
+        tutor_id=tutor_id,
+        day_of_week=day_of_week,
+        is_active=True
+    ).all()
 
-        # Query the Appointment model for booked times on the selected date
-        booked_appointments = Appointment.query.filter_by(
-            tutor_id=tutor_id,
-            booking_date=selected_date
-        ).all()
+    # Get all booked times for this tutor on this date
+    appointments = db.session.execute(
+        db.select(Appointment.booking_time)
+        .where(
+            Appointment.tutor_id == tutor_id,
+            Appointment.booking_date == selected_date
+        )
+    ).scalars().all()
 
-        # Extract booked times (convert datetime to time objects for comparison)
-        booked_times = [appointment.booking_time.time() if isinstance(appointment.booking_time, datetime) 
-                         else appointment.booking_time for appointment in booked_appointments]
+    booked_times = [appt.time() for appt in appointments]
+    booked_set = set(booked_times)
 
-        # Create a list of all hours in the day
-        all_hours = [time(hour, 0) for hour in range(24)]
+    for availability in availabilities:
+        if availability.end_time > availability.start_time:
+            # Normal case: same day
+            current = datetime.combine(selected_date, availability.start_time)
+            end = datetime.combine(selected_date, availability.end_time)
+            while current < end:
+                slot_time = current.time()
+                if slot_time in booked_set:
+                    unavailable_times.append(slot_time.strftime('%H:%M'))
+                else:
+                    available_times.append(slot_time.strftime('%H:%M'))
+                current += timedelta(minutes=60)
+        else:
+            # Overnight: from start_time to end_time, crossing midnight, all on the same day
+            current = datetime.combine(selected_date, availability.start_time)
+            # End is on the next day at end_time
+            end = datetime.combine(selected_date + timedelta(days=1), availability.end_time)
+            while current < end:
+                # Always print on the start day (selected_date)
+                slot_time = (current.time() if current.date() == selected_date else current.time())
+                if slot_time in booked_set:
+                    unavailable_times.append(slot_time.strftime('%H:%M'))
+                else:
+                    available_times.append(slot_time.strftime('%H:%M'))
+                current += timedelta(minutes=60)
 
-        # Find available and unavailable times
-        # Find available and unavailable times
-        available_times = []
-        for hour in all_hours:
-            if any(avail.start_time <= hour < avail.end_time for avail in availabilities) and hour not in booked_times:
-                available_times.append(hour)
-
-        # Convert time objects to strings for JSON serialization
-        available_time_strings = [t.strftime('%H:%M') for t in available_times]
-
-        return jsonify({'available_times': available_time_strings})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'available_times': available_times})
 
 
 
