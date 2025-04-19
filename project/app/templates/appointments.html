@@ -23,9 +23,9 @@
                 <td>{{ appointment.id }}</td>
                 <td>{{ appointment.student_id }}</td>
                 <td>{{ appointment.tutor_id }}</td>
-                <td>{{ appointment.created_date }}</td>
-                <td>{{ appointment.booking_date }}</td>
-                <td>{{ appointment.booking_time }}</td>
+                <td>{{ appointment.created_date }} {{ moment(appointment.created_date).format('LLL') }}</td>
+                <td>{{ appointment.booking_date }} {{ appointment.booking_date.strftime('%B %d, %Y') }}</td>
+                <td>{{ appointment.booking_time }} {{ moment(appointment.booking_time).format('LLL') }}</td>
                 <td>{{ appointment.status }}</td>
                 <td>{{ appointment.last_updated_by }}</td>
                 <td>

@@ -86,6 +86,8 @@ class User(UserMixin, db.Model):
         back_populates='user')
     alerts_received: so.WriteOnlyMapped['Alert'] = so.relationship(
         foreign_keys="Alert.recipient_id", back_populates="recipient", lazy="dynamic")
+    alerts_caused: so.WriteOnlyMapped['Alert'] = so.relationship(
+        foreign_keys="Alert.catalyst_id", back_populates="catalyst", lazy="dynamic")
     availabilities: so.WriteOnlyMapped['Availability'] = so.relationship(back_populates='tutor', cascade='all, delete-orphan')
     reviews_left: so.WriteOnlyMapped['Review'] = so.relationship(
         foreign_keys='Review.student_id', back_populates='student', cascade='all, delete-orphan')
@@ -172,7 +174,10 @@ class Appointment(db.Model):
 
     # Track who last updated the appointment
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
-
+    appointment_alert: so.WriteOnlyMapped['Alert'] = so.relationship(
+        back_populates='alert_appointment', 
+        passive_deletes=True
+    )
     reviews: so.WriteOnlyMapped['Review'] = so.relationship(
         back_populates='appointment',
         passive_deletes=True  # optional, but recommended for ondelete to work
@@ -247,14 +252,26 @@ class Alert(db.Model):
         index=True, default=lambda: datetime.now(timezone.utc))
     relevant_date = db.Column(db.Date)
     relevant_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
-    source: so.Mapped[str] = so.mapped_column(sa.String(140)) # what caused the alert
     recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True) # who is receiving the alert
-
+    catalyst_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), nullable=True) 
+    appointment_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Appointment.id), nullable=True) # appointment attached to the alert
     # Correctly define the recipient relationship
     recipient: so.Mapped[User] = so.relationship(
         "User",
         foreign_keys=[recipient_id],
         back_populates="alerts_received"
+    )
+    catalyst: so.Mapped[User] = so.relationship(
+        "User",
+        foreign_keys=[catalyst_id],
+        back_populates="alerts_caused",
+        lazy="joined"
+    )
+    alert_appointment: so.Mapped[Appointment] = so.relationship(
+        "Appointment",
+        foreign_keys=[appointment_id],
+        back_populates="appointment_alert",
+        lazy="joined"
     )
 
     def __repr__(self):

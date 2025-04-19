@@ -20,7 +20,7 @@
                         <small>{{ appointment.subject.topic }}</small>
                     </div>
                     <div class="col">
-                        <strong>Date:</strong> {{ moment(appointment.booking_date).format('LL') }}<br>
+                        <strong>Date:</strong> {{ appointment.booking_date.strftime('%B %d, %Y') }}<br>
                         <strong>Time:</strong> {{ moment(appointment.booking_time).format('LT') }}<br>
                         <span class="badge bg-secondary text-uppercase">{{ appointment.status }}</span>
                     </div>

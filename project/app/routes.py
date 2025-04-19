@@ -22,62 +22,6 @@ def before_request():
         db.session.commit()
 
 
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/index', methods=['GET', 'POST'])
-@login_required
-def index():
-    form = BookAppointmentForm()
-    # Query appointments for the current user
-    appointments = Appointment.query.filter(
-        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
-    ).all()
-
-    # Convert appointments to FullCalendar's event format
-    events = [
-        {
-            'id': appointment.id,
-            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': f"{appointment.booking_date}T{appointment.booking_time}",
-            'end': f"{appointment.booking_date}T{appointment.booking_time}",
-            'status': appointment.status,
-            'url': f"/appointment/{appointment.id}",
-            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
-        }
-        for appointment in appointments
-    ]
-
-    # Other logic for appointments and requested subjects
-
-
-    all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
-    pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
-    completed_appointments = [appointment for appointment in all_appointments if appointment.status == 'completed']
-    confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
-    pending_needs_approval = [
-        appointment for appointment in pending_appointments
-        if appointment.last_updated_by != current_user.role
-    ]
-    pending_waiting_for_other = [
-        appointment for appointment in pending_appointments
-        if appointment.last_updated_by == current_user.role
-    ]
-    requested_subjects = db.session.query(Subject).join(RequestedSubject).filter(
-        RequestedSubject.student_id == current_user.id
-    ).all()
-
-    return render_template(
-        'index.html',
-        pending_needs_approval=pending_needs_approval,
-        pending_waiting_for_other=pending_waiting_for_other,
-        confirmed_appointments=confirmed_appointments,
-        completed_appointments=completed_appointments,
-        requested_subjects=requested_subjects,
-        form=form,
-        UserRole=UserRole,
-    )
-
-
-
 ###############
 # AUTH SYSTEM #
 ###############
@@ -160,6 +104,77 @@ def reset_password(token):
 
 
 
+########################
+# HOMEPAGE / DASHBOARD #
+########################
+
+
+@app.route('/', methods=['GET', 'POST'])
+@app.route('/index', methods=['GET', 'POST'])
+@login_required
+def index():
+    form = BookAppointmentForm()
+    # Query appointments for the current user
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+
+    # Other logic for appointments and requested subjects
+
+
+    all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
+    pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
+    completed_appointments = [appointment for appointment in all_appointments if appointment.status == 'completed']
+    confirmed_appointments = [appointment for appointment in all_appointments if appointment.status == 'confirmed']
+    pending_needs_approval = [
+        appointment for appointment in pending_appointments
+        if appointment.last_updated_by != current_user.role
+    ]
+    pending_waiting_for_other = [
+        appointment for appointment in pending_appointments
+        if appointment.last_updated_by == current_user.role
+    ]
+    requested_subjects = db.session.query(Subject).join(RequestedSubject).filter(
+        RequestedSubject.student_id == current_user.id
+    ).all()
+
+    return render_template(
+        'index.html',
+        pending_needs_approval=pending_needs_approval,
+        pending_waiting_for_other=pending_waiting_for_other,
+        confirmed_appointments=confirmed_appointments,
+        completed_appointments=completed_appointments,
+        requested_subjects=requested_subjects,
+        form=form,
+        UserRole=UserRole,
+    )
+
+
+@app.route('/api/events') # Gathers events for the calendar
+@login_required
+def api_events():
+    appointments = Appointment.query.filter(
+        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+    ).all()
+
+    events = [
+        {
+            'id': appointment.id,
+            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
+            'start': appointment.booking_time.astimezone(timezone.utc).isoformat(),
+            'end': (appointment.booking_time.astimezone(timezone.utc) + timedelta(hours=1)).isoformat(),
+            'status': appointment.status,
+            'url': f"/appointment/{appointment.id}",
+            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
+        }
+        for appointment in appointments
+    ]
+
+    return jsonify(events)
+
+
+
 ################
 # USER PROFILE #
 ################
@@ -196,7 +211,7 @@ def edit_profile():
 #######################
 
 
-@app.route('/explore')
+@app.route('/explore') # Find tutors or students who have requested classes
 @login_required
 def explore():
     form= BookAppointmentForm()
@@ -269,12 +284,12 @@ def book_appointment():
             subject_id = form.subject_id.data
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
-            
-            # Convert booking_time from time to datetime with timezone
+
+            # Combine date and time as UTC
             booking_datetime = datetime.combine(
-                booking_date,  # Use the same date as booking_date
-                booking_time,  # The time object from the form
-                tzinfo=timezone.utc  # Add UTC timezone
+                booking_date,
+                booking_time,
+                tzinfo=timezone.utc
             )
 
             subject = Subject.query.get(subject_id)
@@ -286,35 +301,35 @@ def book_appointment():
                 flash("Only students can book appointments.", "danger")
                 return redirect(url_for('explore'))
 
-            # Create the appointment with the datetime object
+            # Create the appointment
             appointment = Appointment(
                 student_id=current_user.id,
                 tutor_id=tutor.id,
                 subject_id=subject.id,
                 booking_date=booking_date,
-                booking_time=booking_datetime,  # Use the combined datetime object
+                booking_time=booking_datetime,
                 last_updated_by=current_user.role
             )
-
             db.session.add(appointment)
             db.session.commit()
-                
+
             # Create an alert for the tutor
             alert = Alert(
                 recipient_id=tutor.id,
-                source=current_user.username,
+                catalyst_id=current_user.id,
+                appointment_id=appointment.id,
                 category='book_appointment',
-                subject=f"New Appointment Booked",
                 relevant_date=booking_date,
                 relevant_time=booking_datetime,
-                message=f"booked an appointment with you for {subject.name}. Check your appointments page.",
+                subject="New Appointment Booked",
+                message=f"booked an appointment with you for tutoring in {subject.name}"
             )
-
             db.session.add(alert)
             db.session.commit()
 
-            flash(f"Appointment booked with {tutor.username} for {subject.name} on {booking_date} at {booking_time}. They have been sent an alert.", "success")
+            flash(f"Appointment booked with {tutor.username} for {subject.name}. They have been sent an alert.", "success")
             return redirect(url_for('index'))
+
         except Exception as e:
             db.session.rollback()
             flash(f"Error booking appointment: {str(e)}", "danger")
@@ -322,7 +337,7 @@ def book_appointment():
     return render_template('book_appointment.html', form=form, tutor=tutor)
 
 
-@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST'])
+@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST']) # Begin an appointment
 @login_required
 def begin_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
@@ -336,7 +351,7 @@ def begin_appointment(appointment_id):
     return render_template('begin_appointment.html', form=form, appointment=appointment)
 
 
-@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST'])
+@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST']) # Review the tutor
 @login_required
 def review_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
@@ -357,7 +372,7 @@ def review_appointment(appointment_id):
     return render_template('review_appointment.html', form=form, appointment=appointment)
 
 
-@app.route('/confirm_appointment/<int:appointment_id>', methods=['POST'])
+@app.route('/confirm_appointment/<int:appointment_id>', methods=['POST']) # Confirm updates to an appointment
 @login_required
 def confirm_appointment(appointment_id):
     # Fetch the appointment
@@ -380,7 +395,7 @@ def confirm_appointment(appointment_id):
     return redirect(request.referrer or url_for('index'))
 
 
-@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST'])
+@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST']) # Change details of an appointment; date, time
 @login_required
 def appointment_update(appointment_id):
     # Fetch the appointment
@@ -410,11 +425,13 @@ def appointment_update(appointment_id):
                 user_role=current_user.role
             )
             db.session.commit()
-            flash("The appointment has been successfully updated.", "success")
+            flash("The appointment has been successfully updated! An alert has been sent.", "success")
+
             return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
             flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
+
 
     # Pre-fill the form with the current appointment details
     form.booking_date.data = appointment.booking_date
@@ -427,72 +444,42 @@ def appointment_update(appointment_id):
 @app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
 @login_required
 def remove_appointment(appointment_id):
-    # Fetch the appointment
     appointment = Appointment.query.get_or_404(appointment_id)
     
-    # Check if the current user is associated with the appointment
     if current_user.id not in [appointment.student_id, appointment.tutor_id]:
         flash("You are not authorized to cancel this appointment.", "danger")
         return redirect(request.referrer or url_for('index'))
 
     try:
-        # Access all required attributes before deleting the appointment
         recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
-        subject_name = appointment.subject.name  # Access subject name
-        booking_date = appointment.booking_date
-        booking_time = appointment.booking_time
+        subject_name = appointment.subject.name
 
         # Cancel the appointment and set last_updated_by
         appointment.cancel(current_user.role)
         db.session.delete(appointment)
         db.session.commit()
+
+        # Create an alert for the recipient
+        alert = Alert(
+            recipient_id=recipient_id,
+            catalyst_id=current_user.id,
+            appointment_id=appointment.id,
+            category='cancel_appointment',
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time,
+            subject="Appointment Cancelled",
+            message=f"cancelled your appointment together"
+        )
+        db.session.add(alert)
+        db.session.commit()
+
         flash("The appointment has been successfully canceled.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"An error occurred while canceling the appointment: {str(e)}", "danger")
         return redirect(request.referrer or url_for('index'))
 
-    try:
-        # Create an alert for the recipient
-        alert = Alert(
-            recipient_id=recipient_id,
-            source=current_user.username,
-            category='cancel_appointment',
-            relevant_date=appointment.booking_date,
-            relevant_time=appointment.booking_time.time() if hasattr(appointment.booking_time, "time") else appointment.booking_time,
-            subject="Appointment Canceled",
-            message=f"canceled their appointment with you for {subject_name}",
-        )
-        db.session.add(alert)
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred while sending alert: {str(e)}", "danger")
-
     return redirect(request.referrer or url_for('index'))
-
-
-@app.route('/api/events')
-@login_required
-def api_events():
-    appointments = Appointment.query.filter(
-        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
-    ).all()
-
-    events = [
-        {
-            'id': appointment.id,
-            'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': appointment.booking_time.replace(tzinfo=timezone.utc).isoformat(),
-            'end': (appointment.booking_time.replace(tzinfo=timezone.utc) + timedelta(days=1)).isoformat(),
-            'status': appointment.status,
-            'url': f"/appointment/{appointment.id}",
-            'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
-        }
-        for appointment in appointments
-    ]
-
-    return jsonify(events)
 
 
 @app.route('/api/get_timeslots', methods=['GET'])

@@ -3,6 +3,7 @@
 
 {% block content %}
     <h1>Update Appointment</h1>
+    {{ appointment.booking_date.strftime('%B %d, %Y') }} {{ appointment.booking_time }}
     <p>Updating appointment for {{ appointment.subject.name }} with {{ appointment.tutor.username }}</p>
     {{ wtf.quick_form(form) }}
     <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
