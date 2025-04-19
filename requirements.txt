@@ -19,6 +19,7 @@ Flask-Modals
 Flask-Moment
 Flask-SQLAlchemy
 Flask-WTF
+gunicorn
 greenlet
 idna
 importlib-metadata
