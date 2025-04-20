@@ -159,6 +159,7 @@ class User(UserMixin, db.Model):
         db.session.add(availability)
         return availability
 
+
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -171,6 +172,7 @@ class Appointment(db.Model):
     actual_start_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
     actual_end_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
     status = db.Column(db.String(20), default='confirmed', nullable=False)
+    location: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False)
 
     # Track who last updated the appointment
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
@@ -193,8 +195,9 @@ class Appointment(db.Model):
         self.status = 'cancelled'
         self.last_updated_by = user_role
 
-    def update(self, booking_date, booking_time, user_role):
+    def update(self, booking_date, booking_time, user_role, location):
         """Update the appointment details."""
+        self.location = location
         self.booking_date = booking_date
         self.booking_time = booking_time
         self.status = 'pending'

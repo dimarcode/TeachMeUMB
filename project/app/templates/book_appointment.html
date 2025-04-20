@@ -50,6 +50,12 @@
             </select>
         </div>
 
+        <!-- Location Selection -->
+        <div class="form-group">
+            {{ form.location.label }}
+            {{ form.location(class="form-control") }}
+        </div>
+
         <!-- Hidden Date and Time Fields -->
         <input type="hidden" id="selected_date" name="booking_date" value="">
         <input type="hidden" id="selected_time" name="booking_time">

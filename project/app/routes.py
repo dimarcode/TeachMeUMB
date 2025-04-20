@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, time, timedelta
+from datetime import datetime, timezone, time, timedelta, date
 from urllib.parse import urlsplit
 import pytz
 from flask import render_template, flash, redirect, url_for, request, jsonify
@@ -139,6 +139,30 @@ def index():
         RequestedSubject.student_id == current_user.id
     ).all()
 
+    # Homepage message if student has no subjects or tutor has no availability
+    homepage_message = None
+
+    if current_user.role == UserRole.STUDENT and not current_user.my_subjects:
+        homepage_message = {
+            'type': 'warning',
+            'text': 'In order to find tutors, you must first choose your classes. ',
+            'link_text': 'Choose your subjects now.',
+            'link_url': url_for('add_subject')
+        }
+
+    elif current_user.role == UserRole.TUTOR:
+        has_availability = db.session.query(Availability).filter_by(
+            tutor_id=current_user.id,
+            is_active=True
+        ).first()
+        if not has_availability:
+            homepage_message = {
+                'type': 'warning',
+                'text': 'You have not set your availability yet.',
+                'link_text': 'Set your availability now',
+                'link_url': url_for('set_availability')
+            }
+
     return render_template(
         'index.html',
         pending_needs_approval=pending_needs_approval,
@@ -148,6 +172,7 @@ def index():
         requested_subjects=requested_subjects,
         form=form,
         UserRole=UserRole,
+        homepage_message=homepage_message
     )
 
 
@@ -211,40 +236,112 @@ def edit_profile():
 #######################
 
 
-@app.route('/explore') # Find tutors or students who have requested classes
+@app.route('/explore')
 @login_required
 def explore():
-    form= BookAppointmentForm()
-    if current_user.role == UserRole.STUDENT:
-        # Find tutors who share subjects with the current user
-        tutors = User.query.filter(
-            User.role == UserRole.TUTOR,  # Filter for tutors
-            User.id != current_user.id,   # Exclude current user
-            User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))  # Share any subject
-        ).all()
+    form = BookAppointmentForm()
 
-        # Group tutors by subject
-        tutors_by_subject = {}
-        for subject in current_user.my_subjects:
-            subject_tutors = User.query.filter(
+    if current_user.role == UserRole.STUDENT:
+        # Get selected subject IDs from the checkbox form
+        subject_ids = request.args.getlist('subject_ids', type=int)
+
+        if subject_ids:
+            # Show tutors who teach any of the selected subjects
+            tutors = User.query.filter(
                 User.role == UserRole.TUTOR,
                 User.id != current_user.id,
-                User.my_subjects.contains(subject)
+                User.my_subjects.any(Subject.id.in_(subject_ids))
             ).all()
-            if subject_tutors:
-                tutors_by_subject[subject] = subject_tutors
+        else:
+            # Show tutors who share any subject with the student
+            tutors = User.query.filter(
+                User.role == UserRole.TUTOR,
+                User.id != current_user.id,
+                User.my_subjects.any(Subject.id.in_([s.id for s in current_user.my_subjects]))
+            ).all()
+
+
+        weeks_ahead = 4
+        filtered_tutors = []
+        debug_info = []  # <-- Add this
+
+        for tutor in tutors:
+            availabilities = Availability.query.filter_by(
+                tutor_id=tutor.id,
+                is_active=True
+            ).all()
+
+            tutor_debug = {
+                'tutor': tutor,
+                'availabilities': availabilities,
+                'filtered_out': False,
+                'reason': '',
+                'booked': []
+            }
+
+            has_open_slot = False
+
+            def generate_slots(start, end):
+                slots = []
+                current = datetime.combine(date.today(), start)
+                # If overnight, end is on the next day
+                if end <= start:
+                    end_dt = datetime.combine(date.today() + timedelta(days=1), end)
+                else:
+                    end_dt = datetime.combine(date.today(), end)
+                while current < end_dt:
+                    slots.append(current.time())
+                    current += timedelta(hours=1)
+                return slots
+
+            # ... inside your availability loop ...
+            for availability in availabilities:
+                for week_offset in range(weeks_ahead):
+                    days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
+                    check_date = date.today() + timedelta(days=days_ahead)
+
+                    booked_appointments = Appointment.query.filter_by(
+                        tutor_id=tutor.id,
+                        booking_date=check_date
+                    ).with_entities(Appointment.booking_time).all()
+
+                    tutor_debug['booked'].append({
+                        'date': check_date,
+                        'booked_times': [bt.booking_time for bt in booked_appointments]
+                    })
+
+                    booked_times = {bt.booking_time.time() for bt in booked_appointments}
+
+                    # Generate all slots for this availability
+                    slots = generate_slots(availability.start_time, availability.end_time)
+                    for slot in slots:
+                        if slot not in booked_times:
+                            has_open_slot = True
+                            break
+                    if has_open_slot:
+                        break
+                if has_open_slot:
+                    break
+
+            if has_open_slot:
+                filtered_tutors.append(tutor)
+            else:
+                tutor_debug['filtered_out'] = True
+                tutor_debug['reason'] = "No open slots in the next 4 weeks"
+                debug_info.append(tutor_debug)
+
 
         return render_template(
             'explore.html',
             title='Explore',
-            tutors=tutors,
+            tutors=filtered_tutors,
             form=form,
-            tutors_by_subject=tutors_by_subject,
-            UserRole = UserRole
+            UserRole=UserRole,
+            debug_info=debug_info  # <-- Pass the debug info to the template
         )
 
     elif current_user.role == UserRole.TUTOR:
-        # Query all students who have requested classes
+        # Show requested classes for tutors
         requested_classes = db.session.query(RequestedSubject, User, Subject).join(
             User, RequestedSubject.student_id == User.id
         ).join(
@@ -256,7 +353,7 @@ def explore():
             title='Explore',
             form=form,
             requested_classes=requested_classes,
-            UserRole = UserRole
+            UserRole=UserRole
         )
 
 
@@ -308,10 +405,14 @@ def book_appointment():
                 subject_id=subject.id,
                 booking_date=booking_date,
                 booking_time=booking_datetime,
-                last_updated_by=current_user.role
+                last_updated_by=current_user.role,
+                location=form.location.data
             )
+
             db.session.add(appointment)
             db.session.commit()
+
+            location_display = form.location.data.replace("_", " ").title()
 
             # Create an alert for the tutor
             alert = Alert(
@@ -324,8 +425,11 @@ def book_appointment():
                 subject="New Appointment Booked",
                 message=f"booked an appointment with you for tutoring in {subject.name}"
             )
+
             db.session.add(alert)
             db.session.commit()
+
+            location_display = form.location.data.replace("_", " ").title()
 
             flash(f"Appointment booked with {tutor.username} for {subject.name}. They have been sent an alert.", "success")
             return redirect(url_for('index'))
@@ -335,41 +439,6 @@ def book_appointment():
             flash(f"Error booking appointment: {str(e)}", "danger")
 
     return render_template('book_appointment.html', form=form, tutor=tutor)
-
-
-@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST']) # Begin an appointment
-@login_required
-def begin_appointment(appointment_id):
-    appointment = Appointment.query.get_or_404(appointment_id)
-    form = BeginAppointmentForm()
-    if form.validate_on_submit():
-        appointment.actual_start_time = datetime.combine(appointment.booking_date, form.start_time.data)
-        appointment.actual_end_time = datetime.combine(appointment.booking_date, form.end_time.data)
-
-        db.session.commit()
-        return redirect(url_for('review_appointment', appointment_id=appointment.id))
-    return render_template('begin_appointment.html', form=form, appointment=appointment)
-
-
-@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST']) # Review the tutor
-@login_required
-def review_appointment(appointment_id):
-    appointment = Appointment.query.get_or_404(appointment_id)
-    form = ReviewAppointmentForm()
-    if form.validate_on_submit():
-        review = Review(
-            appointment_id=appointment.id,
-            student_id=current_user.id,
-            tutor_id=appointment.tutor_id,
-            stars=form.stars.data,
-            text=form.text.data
-        )
-        db.session.add(review)
-        appointment.status = 'completed'
-        db.session.commit()
-        flash(f"Your appointment with {appointment.tutor.username} has been successfully completed! Thanks for your review.", "success")
-        return redirect(url_for('index'))
-    return render_template('review_appointment.html', form=form, appointment=appointment)
 
 
 @app.route('/confirm_appointment/<int:appointment_id>', methods=['POST']) # Confirm updates to an appointment
@@ -387,6 +456,24 @@ def confirm_appointment(appointment_id):
         # Confirm the appointment and set last_updated_by
         appointment.confirm(current_user.role)
         db.session.commit()
+
+        # Determine recipient (the other party)
+        recipient_id = appointment.student_id if current_user.role == UserRole.TUTOR else appointment.tutor_id
+
+        # Create an alert for the recipient
+        alert = Alert(
+            recipient_id=recipient_id,
+            catalyst_id=current_user.id,
+            appointment_id=appointment.id,
+            category='confirm_appointment',
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time,
+            subject="Appointment Confirmed",
+            message=f"approved your changes to the appointment scheduled for {appointment.booking_date}."
+        )
+        db.session.add(alert)
+        db.session.commit()
+
         flash(f"Appointment {appointment.id} has been confirmed.", "success")
     except Exception as e:
         db.session.rollback()
@@ -410,6 +497,7 @@ def appointment_update(appointment_id):
 
     if form.validate_on_submit():
         try:
+            location = form.location.data
             # Combine date and time into a datetime object
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
@@ -420,18 +508,34 @@ def appointment_update(appointment_id):
 
             # Update the appointment details
             appointment.update(
+                location=location,
                 booking_date=booking_date,
                 booking_time=booking_datetime,
                 user_role=current_user.role
             )
             db.session.commit()
-            flash("The appointment has been successfully updated! An alert has been sent.", "success")
+             # Determine recipient (the other party)
+            recipient_id = appointment.tutor_id if current_user.id == appointment.student_id else appointment.student_id
 
+            # Create an alert for the recipient
+            alert = Alert(
+                recipient_id=recipient_id,
+                catalyst_id=current_user.id,
+                appointment_id=appointment.id,
+                category='update_appointment',
+                relevant_date=booking_date,
+                relevant_time=booking_datetime,
+                subject="Appointment Updated",
+                message=f"has made changes to the details of your appointment. Please approve the changes made to your appointment scheduled for"
+            )
+            db.session.add(alert)
+            db.session.commit()
+
+            flash("The appointment has been successfully updated! An alert has been sent.", "success")
             return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
             flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
-
 
     # Pre-fill the form with the current appointment details
     form.booking_date.data = appointment.booking_date
@@ -543,6 +647,41 @@ def api_get_timeslots():
                 current += timedelta(minutes=60)
 
     return jsonify({'available_times': available_times})
+
+
+@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST']) # Begin an appointment
+@login_required
+def begin_appointment(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    form = BeginAppointmentForm()
+    if form.validate_on_submit():
+        appointment.actual_start_time = datetime.combine(appointment.booking_date, form.start_time.data)
+        appointment.actual_end_time = datetime.combine(appointment.booking_date, form.end_time.data)
+
+        db.session.commit()
+        return redirect(url_for('review_appointment', appointment_id=appointment.id))
+    return render_template('begin_appointment.html', form=form, appointment=appointment)
+
+
+@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST']) # Review the tutor
+@login_required
+def review_appointment(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    form = ReviewAppointmentForm()
+    if form.validate_on_submit():
+        review = Review(
+            appointment_id=appointment.id,
+            student_id=current_user.id,
+            tutor_id=appointment.tutor_id,
+            stars=form.stars.data,
+            text=form.text.data
+        )
+        db.session.add(review)
+        appointment.status = 'completed'
+        db.session.commit()
+        flash(f"Your appointment with {appointment.tutor.username} has been successfully completed! Thanks for your review.", "success")
+        return redirect(url_for('index'))
+    return render_template('review_appointment.html', form=form, appointment=appointment)
 
 
 

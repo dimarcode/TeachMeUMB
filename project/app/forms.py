@@ -82,12 +82,25 @@ class BookAppointmentForm(FlaskForm):
     subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
     booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
+    location = SelectField('Location', choices=[
+        ('campus_center', 'Campus Center'),
+        ('healey_library', 'Healey Library'),
+        ('university_hall', 'University Hall'),
+        ('online', 'Online')
+    ])
     submit = SubmitField("Book Appointment")
 
 class UpdateAppointmentForm(FlaskForm):
     booking_date = DateField("New Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("New Time", format='%H:%M', validators=[DataRequired()])
+    location = SelectField('Location', choices=[
+        ('campus_center', 'Campus Center 3rd Floor'),
+        ('healey_library', 'Healey Library'),
+        ('university_hall', 'University Hall'),
+        ('online', 'Online')
+    ])
     submit = SubmitField("Update Appointment")
+    
 
 class RequestClassForm(FlaskForm):
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])

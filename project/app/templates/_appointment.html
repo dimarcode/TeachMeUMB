@@ -22,6 +22,7 @@
                     <div class="col">
                         <strong>Date:</strong> {{ appointment.booking_date.strftime('%B %d, %Y') }}<br>
                         <strong>Time:</strong> {{ moment(appointment.booking_time).format('LT') }}<br>
+                        <strong>Location:</strong> {{ appointment.location }}<br>
                         <span class="badge bg-secondary text-uppercase">{{ appointment.status }}</span>
                     </div>
                     <div class="col">
