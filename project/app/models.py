@@ -158,6 +158,12 @@ class User(UserMixin, db.Model):
         )
         db.session.add(availability)
         return availability
+    
+    @property
+    def profile_image_url(self):
+        return self.profile_image or 'default.jpg'
+    profile_image = db.Column(db.String(128), default='default.jpg')
+    profile_image = db.Column(db.String(128), default='default.jpg')
 
 
 class Appointment(db.Model):

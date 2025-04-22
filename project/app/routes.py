@@ -13,7 +13,8 @@ ResetPasswordForm, AvailabilityForm, TestAvailabilityForm, BeginAppointmentForm,
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
 Notification, Alert, Availability, Review
 from app.email import send_password_reset_email
-
+import os
+from werkzeug.utils import secure_filename
 
 @app.before_request
 def before_request():
@@ -217,17 +218,36 @@ def user(username):
 @login_required
 def edit_profile():
     form = EditProfileForm(current_user.username)
+
     if form.validate_on_submit():
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
+
+        # Handle profile image upload
+        if form.profile_image.data:
+            filename = secure_filename(form.profile_image.data.filename)
+            print(" Uploading image:", filename)
+
+            filepath = os.path.join(app.root_path, 'static/uploads', filename)
+            print("Saving image to:", filepath)
+
+            try:
+                form.profile_image.data.save(filepath)
+                current_user.profile_image = filename
+                print("Image saved and user updated")
+            except Exception as e:
+                print("Error saving image:", e)
+
+
         db.session.commit()
-        flash('Your changes have been saved.')
-        return redirect(url_for('edit_profile'))
+        flash('Your changes have been saved.', 'success')
+        return redirect(url_for('user', username=current_user.username))
+
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
-    return render_template('edit_profile.html', title='Edit Profile',
-                           form=form)
+
+    return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 
 

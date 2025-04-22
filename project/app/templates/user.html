@@ -4,7 +4,26 @@
 
     <table class="table table-hover">
         <tr>
-            <td width="256px"><img src="{{ user.avatar(256) }}"></td>
+            <td
+                 width="256px">
+                {% if user.profile_image %}
+                <div class="position-relative d-inline-block">
+
+                      <img src="{{ url_for('static', filename='uploads/' + current_user.profile_image) }}"
+                           class="rounded-circle ms-5"
+                           width="150" height="150"
+                           alt="Profile Picture">
+                  
+                    <a href="{{ url_for('edit_profile') }}"
+                       class="position-absolute bottom-0 end-0 translate-middle p-1 bg-white rounded-circle d-flex align-items-center justify-content-center"
+                       style="left: 80%; width: 32px; height: 32px;" 
+                       title="Edit Profile">
+                      <i class="bi bi-pencil-fill text-primary" style="font-size: 16px;"></i>
+                    </a>
+                </div>                  
+                {% else %}
+                    <img src="{{ user.avatar(256) }}" alt="Gravatar" width="256" class="img-fluid rounded-circle">
+                {% endif %}
             <td>
                 <h1>{{ ('User') }}: {{ user.username }}</h1>
                 {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}

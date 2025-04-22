@@ -4,7 +4,7 @@ from wtforms.validators import ValidationError, DataRequired, InputRequired, Ema
 import sqlalchemy as sa
 from app import db
 from app.models import User, UserRole, Subject, user_subject
-
+from flask_wtf.file import FileField, FileAllowed
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -55,8 +55,9 @@ class RegistrationForm(FlaskForm):
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     about_me = TextAreaField('About me', validators=[Length(min=0, max=140)])
+    profile_image = FileField('Upload Profile Picture', validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')])
     submit = SubmitField('Submit')
-
+    
     def __init__(self, original_username, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.original_username = original_username
