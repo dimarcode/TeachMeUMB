@@ -34,13 +34,26 @@
         padding-bottom: 56px;
     }
 
+    /*navbar hover */
+    .navbar .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 0.25rem;
+    }
+
+    .navbar .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.35);
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
+
     /* calendar body */
     .fc-scrollgrid-section-body a {
         text-decoration: none;
         color: black;
 
     }
-    </style>
+
+</style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg bg-primary navbar-dark">
@@ -132,5 +145,28 @@
         crossorigin="anonymous">
     </script>
     {{ moment.include_moment() }}
+    <script>
+      function set_message_count(n) {
+        const count = document.getElementById('message_count');
+        count.innerText = n;
+        count.style.visibility = n ? 'visible' : 'hidden';
+      }
+
+      {% if current_user.is_authenticated %}
+      function initialize_notifications() {
+        let since = 0;
+        setInterval(async function() {
+          const response = await fetch('{{ url_for('notifications') }}?since=' + since);
+          const notifications = await response.json();
+          for (let i = 0; i < notifications.length; i++) {
+            if (notifications[i].name == 'unread_message_count')
+              set_message_count(notifications[i].data);
+            since = notifications[i].timestamp;
+          }
+        }, 10000);
+      }
+      document.addEventListener('DOMContentLoaded', initialize_notifications);
+      {% endif %}
+    </script>
 </body>
 </html>

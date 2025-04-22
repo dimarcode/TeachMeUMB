@@ -2,35 +2,53 @@
 
 {% block content %}
 
-    <table class="table table-hover">
-        <tr>
-            <td width="256px"><img src="{{ user.avatar(256) }}"></td>
-            <td>
-                <h1>{{ ('User') }}: {{ user.username }}</h1>
-                {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
-                {% if user.last_seen %}<p>Last seen on: {{ moment(user.last_seen).format('LLL') }}</p>{% endif %}
-                <p>ID: {{ user.id }}</p>
-                <p>Email: {{ user.email }}</p>
-                <p>Umass Boston ID: {{ user.umb_id }}</p>
-                <p>Role: {{ user.role.value }}</p>
-                {% if user == current_user %}
-                <p><a href="{{ url_for('edit_profile') }}">Edit your profile</a></p>
-                <p><a href="{{ url_for('add_subject') }}">Manage your subjects</a></p>
-                {% endif %}
-                {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
-                <p><a href="{{ url_for('set_availability') }}">Set Availability</a></p>
-                {% endif %}
-                {% if user != current_user %}
-                    <p><a href="{{ url_for('send_message', recipient=user.username) }}">
-                    Send {{ user.username  }} A Message</a></p>
-                {% endif %}
-            </td>
-        </tr>
-    </table>
-
+    
+    <div class="container mt-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="row g-4 align-items-start">
+                    <div class="col-md-3 text-center">
+                        <img src="{{ user.avatar(256) }}" class="img-fluid rounded-circle border" alt="User avatar">
+                    </div>
+                    <div class="col-md-9">
+                        <h2 class="mb-2">{{ user.username }}</h2>
+                        {% if user.about_me %}
+                            <p class="text-muted">{{ user.about_me }}</p>
+                        {% endif %}
+                    <ul class="list-unstyled">
+                        {% if user.last_seen %}<li><strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}</li>{% endif %}
+                        <li><strong>Email:</strong> {{ user.email }}</li>
+                        <li><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
+                        <li><strong>Role:</strong> {{ user.role.value }}</li>
+                    </ul>
+                    <div class="mt-3">
+                    {% if user == current_user %}
+                        <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                        <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
+                        <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm">Set Availability</a>
+                    {% endif %}
+                    {% if user != current_user %}
+                        <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username  }} A Message</a>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_ser %}
+                        {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_user and user.role == UserRole.TUTOR %}
+                            <a href="{{ url_for('book_appointment', tutor_id=user.id) }}" class="btn btn-outline-primary btn-sm">Book Appointment</a>
+                        {% endif %}
+                    {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-4">
         {% if user.my_subjects %}
             {% include '_currentclasses.html' %}
         {% else %}
-            <p>You haven't enrolled in any classes yet.</p>
+        <div class="alert alert-info" role="alert">
+            You haven't enrolled in any classes yet.
+        </div>
         {% endif %}
+    </div>
 {% endblock %}

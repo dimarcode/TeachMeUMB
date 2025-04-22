@@ -247,7 +247,7 @@ class Post(db.Model):
 
 class Alert(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    
+    status: so.Mapped[str] = so.mapped_column(sa.String(20), default='active', index=True) # unread, read, acknowledged
     subject: so.Mapped[str] = so.mapped_column(sa.String(140)) # subject/headline of the alert
     message: so.Mapped[str] = so.mapped_column(sa.String(140)) # relevant information
     category: so.Mapped[str] = so.mapped_column(sa.String(50), index=True, default='general') # what type of alert (booked appointment, canceled appointment, etc.)

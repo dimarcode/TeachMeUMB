@@ -423,7 +423,7 @@ def book_appointment():
                 relevant_date=booking_date,
                 relevant_time=booking_datetime,
                 subject="New Appointment Booked",
-                message=f"booked an appointment with you for tutoring in {subject.name}"
+                message=f"booked an appointment with you for tutoring in {subject.name} at "
             )
 
             db.session.add(alert)
@@ -465,14 +465,14 @@ def confirm_appointment(appointment_id):
             recipient_id=recipient_id,
             catalyst_id=current_user.id,
             appointment_id=appointment.id,
-            category='confirm_appointment',
-            relevant_date=appointment.booking_date,
-            relevant_time=appointment.booking_time,
-            subject="Appointment Confirmed",
-            message=f"approved your changes to the appointment scheduled for {appointment.booking_date}."
+            category='book_appointment',
+            subject="New Appointment Booked",
+            message=(
+                f"booked an appointment with you for <strong>{subject.name}</strong> on "
+                f"<strong>{booking_date}</strong> at <strong>{booking_time}</strong> "
+                f"in <strong>{location_display}</strong>. Check your appointments page."
+            ),
         )
-        db.session.add(alert)
-        db.session.commit()
 
         flash(f"Appointment {appointment.id} has been confirmed.", "success")
     except Exception as e:
@@ -766,9 +766,12 @@ def delete_availability(availability_id):
 def add_subject():
     form = UserSubjectForm()
 
-    # Handle POST requests from the explore page
-    if request.method == 'POST' and 'subject_id' in request.form:
-        subject_id = request.form.get('subject_id')
+    # Try to get subject_id from either POST form or WTForms
+    subject_id = None
+    if request.method == 'POST':
+        subject_id = request.form.get('subject_id') or form.subject.data
+
+    if subject_id:
         subject = Subject.query.get(subject_id)
         if subject:
             if subject in current_user.my_subjects:
@@ -777,23 +780,26 @@ def add_subject():
                 current_user.my_subjects.append(subject)
                 db.session.commit()
                 flash(f'{subject.name} has been added to your profile.', 'success')
-        else:
-            flash('Invalid subject.', 'danger')
-        return redirect(url_for('explore'))
 
-    # Handle POST requests from the add_subject.html form
-    if form.validate_on_submit():
-        subject = Subject.query.get(form.subject.data)
-        if subject:
-            if subject in current_user.my_subjects:
-                flash(f'You already have {subject.name} added to your profile.', 'warning')
-            else:
-                current_user.my_subjects.append(subject)
-                db.session.commit()
-                flash(f'You have successfully enrolled in {subject.name}!', 'success')
+                # ALERT LOGIC: Tutor adds a subject that matches a requested subject
+                if current_user.role == UserRole.TUTOR:
+                    requested_students = db.session.query(RequestedSubject).filter_by(subject_id=subject.id).all()
+                    for req in requested_students:
+                        alert = Alert(
+                            recipient_id=req.student_id,
+                            catalyst_id=current_user.id,
+                            category='subject_available',
+                            subject="Subject Now Available",
+                            message=f"Your requested class {subject.name} has been added to their available classes.",
+                            relevant_date=datetime.now(timezone.utc).date(),
+                            relevant_time=datetime.now(timezone.utc)
+                        )
+                        db.session.add(alert)
+                    db.session.commit()
         else:
             flash('Invalid subject.', 'danger')
-        return redirect(url_for('add_subject'))
+        # Redirect back to where the request came from, or fallback
+        return redirect(request.referrer or url_for('add_subject'))
 
     return render_template('add_subject.html', title='Add Subject', form=form)
 
@@ -862,6 +868,19 @@ def send_message(recipient):
         return redirect(url_for('user', username=recipient))
     return render_template('send_message.html', title='Send Message',
                            form=form, recipient=recipient)
+
+
+@app.route('/remove_alert/<int:alert_id>')
+@login_required
+def remove_alert(alert_id):
+    alert = Alert.query.get_or_404(alert_id)
+    if alert.recipient_id == current_user.id:
+        db.session.delete(alert)
+        db.session.commit()
+        flash('Alert removed successfully.', 'success')
+    else:
+        flash('You are not authorized to remove this alert.', 'danger')
+    return redirect(request.referrer or url_for('index'))
 
 
 @app.route('/messages')

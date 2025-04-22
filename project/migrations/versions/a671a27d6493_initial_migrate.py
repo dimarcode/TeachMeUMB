@@ -1,8 +1,8 @@
 """initial migrate
 
-Revision ID: 2722172f941d
+Revision ID: a671a27d6493
 Revises: 
-Create Date: 2025-04-18 04:47:10.060892
+Create Date: 2025-04-22 01:31:25.599104
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '2722172f941d'
+revision = 'a671a27d6493'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -43,24 +43,6 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_user_email'), ['email'], unique=True)
         batch_op.create_index(batch_op.f('ix_user_username'), ['username'], unique=True)
 
-    op.create_table('alert',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('subject', sa.String(length=140), nullable=False),
-    sa.Column('message', sa.String(length=140), nullable=False),
-    sa.Column('category', sa.String(length=50), nullable=False),
-    sa.Column('timestamp', sa.DateTime(), nullable=False),
-    sa.Column('relevant_date', sa.Date(), nullable=True),
-    sa.Column('relevant_time', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('source', sa.String(length=140), nullable=False),
-    sa.Column('recipient_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['recipient_id'], ['user.id'], name=op.f('fk_alert_recipient_id_user')),
-    sa.PrimaryKeyConstraint('id', name=op.f('pk_alert'))
-    )
-    with op.batch_alter_table('alert', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_alert_category'), ['category'], unique=False)
-        batch_op.create_index(batch_op.f('ix_alert_recipient_id'), ['recipient_id'], unique=False)
-        batch_op.create_index(batch_op.f('ix_alert_timestamp'), ['timestamp'], unique=False)
-
     op.create_table('appointment',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('student_id', sa.Integer(), nullable=True),
@@ -69,9 +51,10 @@ def upgrade():
     sa.Column('created_date', sa.DateTime(), nullable=False),
     sa.Column('booking_date', sa.Date(), nullable=False),
     sa.Column('booking_time', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('actual_start_time', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('actual_end_time', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('actual_start_time', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('actual_end_time', sa.DateTime(timezone=True), nullable=True),
     sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('location', sa.String(length=100), nullable=False),
     sa.Column('last_updated_by', sa.Enum('STUDENT', 'TUTOR', name='userrole'), nullable=True),
     sa.ForeignKeyConstraint(['student_id'], ['user.id'], name=op.f('fk_appointment_student_id_user')),
     sa.ForeignKeyConstraint(['subject_id'], ['subject.id'], name=op.f('fk_appointment_subject_id_subject')),
@@ -146,15 +129,38 @@ def upgrade():
     sa.ForeignKeyConstraint(['subject_id'], ['subject.id'], name=op.f('fk_user_subject_subject_id_subject')),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], name=op.f('fk_user_subject_user_id_user'))
     )
+    op.create_table('alert',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=20), nullable=False),
+    sa.Column('subject', sa.String(length=140), nullable=False),
+    sa.Column('message', sa.String(length=140), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=False),
+    sa.Column('timestamp', sa.DateTime(), nullable=False),
+    sa.Column('relevant_date', sa.Date(), nullable=True),
+    sa.Column('relevant_time', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('recipient_id', sa.Integer(), nullable=False),
+    sa.Column('catalyst_id', sa.Integer(), nullable=True),
+    sa.Column('appointment_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['appointment_id'], ['appointment.id'], name=op.f('fk_alert_appointment_id_appointment')),
+    sa.ForeignKeyConstraint(['catalyst_id'], ['user.id'], name=op.f('fk_alert_catalyst_id_user')),
+    sa.ForeignKeyConstraint(['recipient_id'], ['user.id'], name=op.f('fk_alert_recipient_id_user')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_alert'))
+    )
+    with op.batch_alter_table('alert', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_alert_category'), ['category'], unique=False)
+        batch_op.create_index(batch_op.f('ix_alert_recipient_id'), ['recipient_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_alert_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_alert_timestamp'), ['timestamp'], unique=False)
+
     op.create_table('review',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('appointment_id', sa.Integer(), nullable=False),
+    sa.Column('appointment_id', sa.Integer(), nullable=True),
     sa.Column('student_id', sa.Integer(), nullable=False),
     sa.Column('tutor_id', sa.Integer(), nullable=False),
     sa.Column('timestamp', sa.DateTime(), nullable=False),
     sa.Column('stars', sa.Integer(), nullable=False),
     sa.Column('text', sa.Text(), nullable=True),
-    sa.ForeignKeyConstraint(['appointment_id'], ['appointment.id'], name=op.f('fk_review_appointment_id_appointment')),
+    sa.ForeignKeyConstraint(['appointment_id'], ['appointment.id'], name=op.f('fk_review_appointment_id_appointment'), ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['student_id'], ['user.id'], name=op.f('fk_review_student_id_user')),
     sa.ForeignKeyConstraint(['tutor_id'], ['user.id'], name=op.f('fk_review_tutor_id_user')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_review'))
@@ -165,6 +171,13 @@ def upgrade():
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('review')
+    with op.batch_alter_table('alert', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_alert_timestamp'))
+        batch_op.drop_index(batch_op.f('ix_alert_status'))
+        batch_op.drop_index(batch_op.f('ix_alert_recipient_id'))
+        batch_op.drop_index(batch_op.f('ix_alert_category'))
+
+    op.drop_table('alert')
     op.drop_table('user_subject')
     op.drop_table('requested_subject')
     with op.batch_alter_table('post', schema=None) as batch_op:
@@ -189,12 +202,6 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_appointment_created_date'))
 
     op.drop_table('appointment')
-    with op.batch_alter_table('alert', schema=None) as batch_op:
-        batch_op.drop_index(batch_op.f('ix_alert_timestamp'))
-        batch_op.drop_index(batch_op.f('ix_alert_recipient_id'))
-        batch_op.drop_index(batch_op.f('ix_alert_category'))
-
-    op.drop_table('alert')
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_user_username'))
         batch_op.drop_index(batch_op.f('ix_user_email'))
