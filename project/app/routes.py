@@ -15,6 +15,9 @@ Notification, Alert, Availability, Review
 from app.email import send_password_reset_email
 import os
 from werkzeug.utils import secure_filename
+from pytz import timezone as pytz_timezone
+
+
 
 @app.before_request
 def before_request():
@@ -177,27 +180,32 @@ def index():
     )
 
 
-@app.route('/api/events') # Gathers events for the calendar
+@app.route('/api/events')
 @login_required
 def api_events():
     appointments = Appointment.query.filter(
         (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
     ).all()
 
-    events = [
-        {
+    eastern = pytz_timezone("America/New_York")
+
+    events = []
+    for appointment in appointments:
+        event = {
             'id': appointment.id,
             'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': appointment.booking_time.astimezone(timezone.utc).isoformat(),
-            'end': (appointment.booking_time.astimezone(timezone.utc) + timedelta(hours=1)).isoformat(),
+            'start': appointment.booking_time.isoformat(),
+            'end': (appointment.booking_time + timedelta(hours=1)).isoformat(),
             'status': appointment.status,
             'url': f"/appointment/{appointment.id}",
             'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
+            'display_date': appointment.booking_date.strftime('%B %d, %Y'),
+            'display_time': appointment.booking_time.astimezone(eastern).strftime('%I:%M %p')
         }
-        for appointment in appointments
-    ]
+        events.append(event)
 
     return jsonify(events)
+
 
 
 

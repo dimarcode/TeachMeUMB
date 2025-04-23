@@ -21,6 +21,7 @@
                         initialView: 'dayGridMonth',
                         themeSystem: 'bootstrap5',
                         height: 650,
+                        timeZone: 'America/New_York',
                         events: events,
                         headerToolbar: {
                             left: 'prev,next today',
@@ -28,6 +29,7 @@
                             right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
                         },
                         eventClick: function(info) {
+
                             info.jsEvent.preventDefault();
 
                             // Get modal elements
@@ -36,11 +38,11 @@
                             const modalFooter = document.getElementById('modalFooter');
 
                             // Format the appointment time
-                            const appointmentDate = info.event.start.toLocaleDateString('en-US');
-                            const appointmentTime = info.event.start.toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                            });
+                            const appointmentDate = info.event.extendedProps.display_date;
+                            const appointmentTime = info.event.extendedProps.display_time;
+
+
+
 
                             // Get the course name from the event title or subject property
                             const courseName = info.event.title;
