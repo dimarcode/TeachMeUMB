@@ -47,6 +47,7 @@
         </div>
     {% endif %}
     
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var calendarEl = document.getElementById('calendar');
@@ -60,7 +61,7 @@
                         initialView: 'dayGridMonth',
                         themeSystem: 'bootstrap5',
                         height: 650,
-                        timezone: 'America/New_York',
+                        timeZone: 'America/New_York',
                         events: events,
                         headerToolbar: {
                             left: 'prev,next today',
@@ -68,6 +69,7 @@
                             right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
                         },
                         eventClick: function(info) {
+
                             info.jsEvent.preventDefault();
 
                             // Get modal elements
@@ -78,6 +80,9 @@
                             // Format the appointment time
                             const appointmentDate = info.event.extendedProps.display_date;
                             const appointmentTime = info.event.extendedProps.display_time;
+
+
+
 
                             // Get the course name from the event title or subject property
                             const courseName = info.event.title;

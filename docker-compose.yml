@@ -21,7 +21,7 @@ services:
       - ./project:/app
     environment:
       - FLASK_APP=teachmeumb.py
-      - FLASK_DEBUG=0
+      - FLASK_DEBUG=1
       - MAIL_SERVER=mail
       - MAIL_PORT=1025
     networks:
