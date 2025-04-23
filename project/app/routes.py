@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, time, timedelta, date
 from urllib.parse import urlsplit
-import pytz
+from pytz import timezone as pytz_timezone
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
@@ -181,25 +181,29 @@ def index():
     )
 
 
-@app.route('/api/events') # Gathers events for the calendar
+@app.route('/api/events')
 @login_required
 def api_events():
     appointments = Appointment.query.filter(
         (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
     ).all()
 
-    events = [
-        {
+    eastern = pytz_timezone("America/New_York")
+
+    events = []
+    for appointment in appointments:
+        event = {
             'id': appointment.id,
             'title': f"{appointment.subject.name} with {appointment.tutor.username if current_user.role == UserRole.STUDENT else appointment.student.username}",
-            'start': appointment.booking_time.astimezone(timezone.utc).isoformat(),
-            'end': (appointment.booking_time.astimezone(timezone.utc) + timedelta(hours=1)).isoformat(),
+            'start': appointment.booking_time.isoformat(),
+            'end': (appointment.booking_time + timedelta(hours=1)).isoformat(),
             'status': appointment.status,
             'url': f"/appointment/{appointment.id}",
             'description': f"Subject: {appointment.subject.name}, Status: {appointment.status}",
+            'display_date': appointment.booking_date.strftime('%B %d, %Y'),
+            'display_time': appointment.booking_time.astimezone(eastern).strftime('%I:%M %p')
         }
-        for appointment in appointments
-    ]
+        events.append(event)
 
     return jsonify(events)
 
@@ -805,12 +809,11 @@ def add_subject():
                         alert = Alert(
                             category='subject_available',
                             headline="Subject Now Available",
-                            message=f"A tutor has added the subject you requested to their available classes. \
+                            message=f"has added the subject you requested to their available classes. \
                             You may now book an appointment with them!",
                             relevant_date=datetime.now(timezone.utc).date(),
                             relevant_time=datetime.now(timezone.utc),
                             subject_name=subject.name,
-
                             recipient_id=req.student_id,
                             catalyst_id=current_user.id,
                         )

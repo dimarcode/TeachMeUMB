@@ -43,12 +43,31 @@
         </div>
     </div>
     <div class="mt-4">
-        {% if user.my_subjects %}
-            {% include '_currentclasses.html' %}
-        {% else %}
-        <div class="alert alert-info" role="alert">
-            You haven't enrolled in any classes yet.
+        <div class="mt-5">
+            {% if user == current_user %}
+                <h4 class="fw-bold text-primary mb-3">Your Current Classes</h4>
+            {% elif user.role == UserRole.TUTOR %}
+                <h4 class="fw-bold text-success mb-3">{{ user.username }} is offering tutoring for the following classes:</h4>
+            {% elif user.role == UserRole.STUDENT %}
+                <h4 class="fw-bold text-success mb-3">{{ user.username }} is looking for tutoring in the following classes:</h4>
+            {% endif %}
+
+            {% if user.my_subjects %}
+                <ul class="list-group">
+                    {% for subject in user.my_subjects %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ subject.name }} - {{ subject.topic }}
+                            {% if current_user.is_authenticated and user == current_user %}
+                            <a href="{{ url_for('remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    You haven't enrolled in any classes yet.
+                </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 {% endblock %}

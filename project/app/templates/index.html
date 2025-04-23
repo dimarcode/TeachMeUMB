@@ -2,6 +2,8 @@
 
 {% block content %}
 
+<h1>Hi, {{ current_user.username }}!</h1>
+
     {% if homepage_messages %}
     <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
         <span class="me-2">
@@ -9,21 +11,41 @@
         </span>
         <div class="fw-bold mb-0 flex-grow-1">
             {% if current_user.role == UserRole.TUTOR %}
-                To allow for students to book appointments with you, please:
+                Hello and welcome to TeachMeUMB! Please perform the following actions so that students can book appointments with you:
             {% else %}
-                To book appointment with a tutor, first you must:
+                To book an appointment with a tutor, first you must:
             {% endif %}
         </div>
     </div>
-    {% for msg in homepage_messages %}
-        <div class="alert alert-{{ msg.type }} d-flex align-items-center mb-2" role="alert">
-            <div class="fw-bold flex-grow-1 mb-0">
-                {{ msg.text }}
-                <a href="{{ msg.link_url }}" class="alert-link">{{ msg.link_text }}</a>
+        {% for msg in homepage_messages %}
+            <div class="alert alert-{{ msg.type }} d-flex align-items-center mb-2" role="alert">
+                <div class="fw-bold flex-grow-1 mb-0">
+                    {{ msg.text }}
+                    <a href="{{ msg.link_url }}" class="alert-link">{{ msg.link_text }}</a>
+                </div>
             </div>
+        {% endfor %}
+    {% elif (current_user.role == UserRole.TUTOR and current_user.tutor_appointments.count() == 0) %}
+        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+            <strong>Reminder:</strong> You haven't been booked for any appointments yet!<br><br>
+            Some things you can try:<br>
+            - Add more 
+            <a href="{{ url_for('set_availability') }}" class="alert-link">time to your availability</a><br>
+            - Check for students that can't find tutors for their classes
+            <a href="{{ url_for('explore') }}" class="alert-link">on the the explore page</a>
+            
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-    {% endfor %}
-{% endif %}
+    {% elif (current_user.role == UserRole.STUDENT and current_user.student_appointments.count() == 0) %}
+        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+            <strong>Reminder:</strong> You haven't booked any appointments yet!<br>
+            Tutors can be found
+            <a href="{{ url_for('explore') }}" class="alert-link">on the explore page</a>.<br>
+            If no tutors are available for the class you need,
+            <a href="{{ url_for('request_class') }}" class="alert-link">try requesting a class</a>.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -54,11 +76,8 @@
                             const modalFooter = document.getElementById('modalFooter');
 
                             // Format the appointment time
-                            const appointmentDate = info.event.start.toLocaleDateString('en-US');
-                            const appointmentTime = info.event.start.toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                            });
+                            const appointmentDate = info.event.extendedProps.display_date;
+                            const appointmentTime = info.event.extendedProps.display_time;
 
                             // Get the course name from the event title or subject property
                             const courseName = info.event.title;
@@ -89,8 +108,8 @@
                 });
         });
     </script>
-    <h1>Hi, {{ current_user.username }}!</h1>
-
+    
+    
     <!-- Calendar Section -->
     <div id="calendar"></div>
 
@@ -154,19 +173,6 @@
                     {% endfor %}
             {% endif %}
         </div>
-    {% else %}
-        {% if not current_user.my_subjects %}
-            <p>You haven't added any classes yet. <a href="{{ url_for('add_subject') }}">Add a class now in order to start using the appointment system.</a></p>
-        {% else %}
-            {% if current_user.role == UserRole.TUTOR %}
-                <p>You haven't been booked for any appointments yet! <br>
-                Try adding to your availability, or <a href="{{ url_for('explore') }}">check the explore page</a> for students that can't find tutors for their classes.</p>
-            {% else %}
-                <p>You haven't booked any appointments yet!<br>
-                <a href="{{ url_for('explore') }}">Try finding a tutor on the explore page</a>.<br>
-                If no tutors are available for the class you need, <a href="{{ url_for('request_class') }}">try requesting a class</a>.</p>
-            {% endif %}
-        {% endif %}
     {% endif %}
     <!-- Requested Subjects Section -->
     {% if current_user.role == UserRole.STUDENT %}

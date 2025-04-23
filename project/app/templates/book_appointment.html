@@ -7,7 +7,7 @@
         <div class="col-12 col-md-4 mb-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h4 class="card-title mb-2">Book Appointment with <span class="text-primary">{{ tutor.username }}</span></h4>
+                    <h4 class="card-title mb-2">Book Appointment with <span class="text-primary"><a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a></span></h4>
                     <p class="mb-1"><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
                     <p class="mb-1"><strong>Email:</strong> <a href="mailto:{{ tutor.email }}">{{ tutor.email }}</a></p>
                 </div>
