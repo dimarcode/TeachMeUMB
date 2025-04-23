@@ -196,9 +196,9 @@ class Appointment(db.Model):
 
     def update(self, booking_date, booking_time, user_role, location_id, directions):
         """Update the appointment details."""
-        self.location_id = location_id
         self.booking_date = booking_date
-        self.booking_datetime = booking_time
+        self.booking_time = booking_time
+        self.location_id = location_id
         self.directions = directions
         self.last_updated_by = user_role
 

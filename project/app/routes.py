@@ -986,12 +986,16 @@ def notifications():
     } for n in notifications] + [{
         'type': 'alert',
         'message': a.message,
-        'subject': a.subject,  # Assuming `subject` is a User
+        'headline': a.headline,  # Assuming `subject` is a User
         'timestamp': a.timestamp
     } for a in alerts]
 
-    combined.sort(key=lambda x: x['timestamp'])
-    return jsonify(combined)
+    def to_datetime(ts):
+        if isinstance(ts, float):
+            return datetime.fromtimestamp(ts, timezone.utc)
+        return ts
+
+    combined.sort(key=lambda x: to_datetime(x['timestamp']))
 
 
 
