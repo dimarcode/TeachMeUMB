@@ -140,15 +140,14 @@ def index():
     ).all()
 
     # Homepage message if student has no subjects or tutor has no availability
-    homepage_message = None
+    homepage_messages = []
 
     if current_user.role == UserRole.STUDENT and not current_user.my_subjects:
-        homepage_message = {
+        homepage_messages.append({
             'type': 'warning',
-            'text': 'In order to find tutors, you must first choose your classes. ',
-            'link_text': 'Choose your subjects now.',
+            'link_text': 'Choose the classes you are taking this semester',
             'link_url': url_for('add_subject')
-        }
+        })
 
     elif current_user.role == UserRole.TUTOR:
         has_availability = db.session.query(Availability).filter_by(
@@ -156,12 +155,18 @@ def index():
             is_active=True
         ).first()
         if not has_availability:
-            homepage_message = {
+            homepage_messages.append({
                 'type': 'warning',
-                'text': 'You have not set your availability yet.',
-                'link_text': 'Set your availability now',
+                'link_text': 'Set your availability schedule',
                 'link_url': url_for('set_availability')
-            }
+            })
+
+        if not current_user.my_subjects:
+            homepage_messages.append({
+                'type': 'warning',
+                'link_text': 'Add the classes you can tutor in',
+                'link_url': url_for('add_subject')
+            })
 
     return render_template(
         'index.html',
@@ -172,7 +177,7 @@ def index():
         requested_subjects=requested_subjects,
         form=form,
         UserRole=UserRole,
-        homepage_message=homepage_message
+        homepage_messages=homepage_messages
     )
 
 
@@ -381,6 +386,7 @@ def book_appointment():
             subject_id = form.subject_id.data
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
+            location_id = form.location_id.data  # Expecting this is the location's ID
 
             # Combine date and time as UTC
             booking_datetime = datetime.combine(
@@ -406,30 +412,31 @@ def book_appointment():
                 booking_date=booking_date,
                 booking_time=booking_datetime,
                 last_updated_by=current_user.role,
-                location=form.location.data
+                location_id=location_id  # <-- Use location_id here
             )
 
             db.session.add(appointment)
             db.session.commit()
 
-            location_display = form.location.data.replace("_", " ").title()
-
             # Create an alert for the tutor
             alert = Alert(
+                
+                category='book_appointment',
+                headline="New Appointment Booked",
+                message=f"booked an appointment with you for tutoring in {subject.name}.",
+                relevant_date=booking_date,
+                relevant_time=booking_datetime,
+                subject_name=subject.name,
+
                 recipient_id=tutor.id,
                 catalyst_id=current_user.id,
                 appointment_id=appointment.id,
-                category='book_appointment',
-                relevant_date=booking_date,
-                relevant_time=booking_datetime,
-                subject="New Appointment Booked",
-                message=f"booked an appointment with you for tutoring in {subject.name} at "
+                location_id=location_id,
+               # subject=subject.id,
             )
 
             db.session.add(alert)
             db.session.commit()
-
-            location_display = form.location.data.replace("_", " ").title()
 
             flash(f"Appointment booked with {tutor.username} for {subject.name}. They have been sent an alert.", "success")
             return redirect(url_for('index'))
@@ -462,17 +469,20 @@ def confirm_appointment(appointment_id):
 
         # Create an alert for the recipient
         alert = Alert(
+            category='book_appointment',
+            headline="Appointment Changes Approved",
+            message=(f"booked an appointment with you for {appointment.subject.name}"),
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time,
+            subject_name=appointment.subject.name,
+            
             recipient_id=recipient_id,
             catalyst_id=current_user.id,
             appointment_id=appointment.id,
-            category='book_appointment',
-            subject="New Appointment Booked",
-            message=(
-                f"booked an appointment with you for <strong>{subject.name}</strong> on "
-                f"<strong>{booking_date}</strong> at <strong>{booking_time}</strong> "
-                f"in <strong>{location_display}</strong>. Check your appointments page."
-            ),
+            location_id=appointment.location_id,  # Use the location ID from the appointment
         )
+        db.session.add(alert)
+        db.session.commit()
 
         flash(f"Appointment {appointment.id} has been confirmed.", "success")
     except Exception as e:
@@ -482,67 +492,73 @@ def confirm_appointment(appointment_id):
     return redirect(request.referrer or url_for('index'))
 
 
-@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST']) # Change details of an appointment; date, time
+@app.route('/appointment_update/<int:appointment_id>', methods=['GET', 'POST'])
 @login_required
 def appointment_update(appointment_id):
-    # Fetch the appointment
     appointment = Appointment.query.get_or_404(appointment_id)
+    tutor_id = request.args.get('tutor_id', type=int)
 
-    # Ensure the current user is associated with the appointment
-    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
-        flash("You are not authorized to update this appointment.", "danger")
-        return redirect(request.referrer or url_for('index'))
+    if not tutor_id:
+        flash("Invalid tutor selected.", "danger")
+        return redirect(url_for('explore'))
+
+    tutor = User.query.get_or_404(tutor_id)
 
     form = UpdateAppointmentForm()
 
-    if form.validate_on_submit():
+    if request.method == 'POST' and form.validate_on_submit():
         try:
-            location = form.location.data
-            # Combine date and time into a datetime object
+            tutor = User.query.get_or_404(tutor_id)
             booking_date = form.booking_date.data
             booking_time = form.booking_time.data
-            if booking_date and booking_time:
-                booking_datetime = datetime.combine(booking_date, booking_time)
-            else:
-                booking_datetime = appointment.booking_time  # fallback
+            location_id = form.location_id.data
+            directions = form.directions.data
 
-            # Update the appointment details
+            booking_datetime = datetime.combine(
+                booking_date,
+                booking_time,
+                tzinfo=timezone.utc
+            )
+
+            # Update the appointment
             appointment.update(
-                location=location,
                 booking_date=booking_date,
                 booking_time=booking_datetime,
-                user_role=current_user.role
+                location_id=location_id,
+                directions=directions,
+                user_role=current_user.role,  # Set the role of the user updating the appointment
             )
-            db.session.commit()
-             # Determine recipient (the other party)
-            recipient_id = appointment.tutor_id if current_user.id == appointment.student_id else appointment.student_id
 
-            # Create an alert for the recipient
+            db.session.commit()
+
+            recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
+            recipient = User.query.get(recipient_id)
+            subject = Subject.query.get(appointment.subject_id)
+            # Create an alert for the other party
             alert = Alert(
+                category='update_appointment',
+                headline="Appointment Details Updated",
+                message=f"Updated the details of your tutoring session for {subject.name}",
+                relevant_date=booking_date,
+                relevant_time=booking_datetime,
+                subject_name=appointment.subject.name,
                 recipient_id=recipient_id,
                 catalyst_id=current_user.id,
                 appointment_id=appointment.id,
-                category='update_appointment',
-                relevant_date=booking_date,
-                relevant_time=booking_datetime,
-                subject="Appointment Updated",
-                message=f"has made changes to the details of your appointment. Please approve the changes made to your appointment scheduled for"
+                location_id=location_id,
             )
+
             db.session.add(alert)
             db.session.commit()
 
-            flash("The appointment has been successfully updated! An alert has been sent.", "success")
+            flash(f"Your appointment with {recipient.username} for {subject.name} has been updated. They have been sent an alert.", "success")
             return redirect(url_for('index'))
+
         except Exception as e:
             db.session.rollback()
-            flash(f"An error occurred while updating the appointment: {str(e)}", "danger")
+            flash(f"Error updating appointment: {str(e)}", "danger")
 
-    # Pre-fill the form with the current appointment details
-    form.booking_date.data = appointment.booking_date
-    # Set the time part for the form (expects a time object)
-    form.booking_time.data = appointment.booking_time.time() if appointment.booking_time else None
-
-    return render_template('appointment_update.html', title='Update Appointment', form=form, appointment=appointment)
+    return render_template('appointment_update.html', form=form, appointment=appointment, tutor=tutor, tutor_id=tutor_id)
 
 
 @app.route('/remove_appointment/<int:appointment_id>', methods=['POST'])
@@ -556,25 +572,26 @@ def remove_appointment(appointment_id):
 
     try:
         recipient_id = appointment.tutor_id if current_user.role == UserRole.STUDENT else appointment.student_id
-        subject_name = appointment.subject.name
-
-        # Cancel the appointment and set last_updated_by
-        appointment.cancel(current_user.role)
-        db.session.delete(appointment)
-        db.session.commit()
 
         # Create an alert for the recipient
         alert = Alert(
+            category='cancel_appointment',
+            headline="Appointment Cancelled",
+            message=f"cancelled your appointment together",
+            relevant_date=appointment.booking_date,
+            relevant_time=appointment.booking_time,
+            subject_name=appointment.subject.name,
+            
             recipient_id=recipient_id,
             catalyst_id=current_user.id,
             appointment_id=appointment.id,
-            category='cancel_appointment',
-            relevant_date=appointment.booking_date,
-            relevant_time=appointment.booking_time,
-            subject="Appointment Cancelled",
-            message=f"cancelled your appointment together"
+            location_id=appointment.location_id,
         )
         db.session.add(alert)
+        db.session.commit()
+
+        appointment.cancel(current_user.role)
+        db.session.delete(appointment)
         db.session.commit()
 
         flash("The appointment has been successfully canceled.", "success")
@@ -786,13 +803,16 @@ def add_subject():
                     requested_students = db.session.query(RequestedSubject).filter_by(subject_id=subject.id).all()
                     for req in requested_students:
                         alert = Alert(
+                            category='subject_available',
+                            headline="Subject Now Available",
+                            message=f"A tutor has added the subject you requested to their available classes. \
+                            You may now book an appointment with them!",
+                            relevant_date=datetime.now(timezone.utc).date(),
+                            relevant_time=datetime.now(timezone.utc),
+                            subject_name=subject.name,
+
                             recipient_id=req.student_id,
                             catalyst_id=current_user.id,
-                            category='subject_available',
-                            subject="Subject Now Available",
-                            message=f"Your requested class {subject.name} has been added to their available classes.",
-                            relevant_date=datetime.now(timezone.utc).date(),
-                            relevant_time=datetime.now(timezone.utc)
                         )
                         db.session.add(alert)
                     db.session.commit()
@@ -875,11 +895,34 @@ def send_message(recipient):
 def remove_alert(alert_id):
     alert = Alert.query.get_or_404(alert_id)
     if alert.recipient_id == current_user.id:
-        db.session.delete(alert)
-        db.session.commit()
+        alert.remove()
         flash('Alert removed successfully.', 'success')
     else:
         flash('You are not authorized to remove this alert.', 'danger')
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/archive_alert/<int:alert_id>')
+@login_required
+def archive_alert(alert_id):  # <-- Unique function name
+    alert = Alert.query.get_or_404(alert_id)
+    if alert.recipient_id == current_user.id:
+        alert.archive()
+        flash('Alert archived successfully.', 'success')
+    else:
+        flash('You are not authorized to archive this alert.', 'danger')
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/reset_alert/<int:alert_id>')
+@login_required
+def reset_alert(alert_id):  # <-- Unique function name
+    alert = Alert.query.get_or_404(alert_id)
+    if alert.recipient_id == current_user.id:
+        alert.reset()
+        flash('Alert archived successfully.', 'success')
+    else:
+        flash('You are not authorized to reset this alert.', 'danger')
     return redirect(request.referrer or url_for('index'))
 
 
@@ -892,22 +935,31 @@ def messages():
     page = request.args.get('page', 1, type=int)
     query = current_user.messages_received.select().order_by(
         Message.timestamp.desc())
-    alerts_query = current_user.alerts_received.select().order_by(
-        Alert.timestamp.desc())
-    alerts = db.paginate(alerts_query, page=page,
+    
+    active_alerts_query = current_user.alerts_received.select().where(
+        Alert.status == "active").order_by(
+            Alert.timestamp.desc())
+
+    archived_alerts_query = current_user.alerts_received.select().where(
+        Alert.status == "archived").order_by(
+            Alert.timestamp.desc())
+    
+    active_alerts = db.paginate(active_alerts_query, page=page,
                            per_page=app.config['POSTS_PER_PAGE'],
                            error_out=False)
+    
+    archived_alerts = db.paginate(archived_alerts_query, page=page,
+                           per_page=app.config['POSTS_PER_PAGE'],
+                           error_out=False)
+    
     messages = db.paginate(query, page=page,
                            per_page=app.config['POSTS_PER_PAGE'],
                            error_out=False)
 
-
-    next_url = url_for('messages', page=messages.next_num) \
-        if messages.has_next else None
-    prev_url = url_for('messages', page=messages.prev_num) \
-        if messages.has_prev else None
-    return render_template('messages.html', messages=messages.items, alerts=alerts.items,
-                           next_url=next_url, prev_url=prev_url)
+    next_url = url_for('messages', page=messages.next_num) if messages.has_next else None
+    prev_url = url_for('messages', page=messages.prev_num) if messages.has_prev else None
+    return render_template('messages.html', messages=messages.items, active_alerts=active_alerts.items, 
+                           archived_alerts=archived_alerts.items, next_url=next_url, prev_url=prev_url)
 
 
 @app.route('/notifications')

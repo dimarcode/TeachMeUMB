@@ -53,6 +53,28 @@
 
     }
 
+    .calendar-scroll {
+        overflow-x: auto;
+        /* Prevents horizontal overflow on all screen sizes */
+    }
+    .calendar-table {
+        min-width: 500px; /* Adjust as needed for your button content */
+    }
+    .calendar-header th {
+        padding: 0 !important;
+        vertical-align: middle !important;
+    }
+
+    @media (max-width: 576px) {
+        .calendar-header .clickable-day {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.2rem;
+        }
+        .calendar-header th {
+            padding: 0 !important;
+        }
+    }
+
 </style>
 </head>
 <body>

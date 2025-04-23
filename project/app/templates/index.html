@@ -2,11 +2,28 @@
 
 {% block content %}
 
-    {% if homepage_message %}
-        <div class="alert alert-{{ homepage_message.type }} text-center mt-3" role="alert">
-            {{ homepage_message.text }}<a href="{{ homepage_message.link_url }}" class="alert-link"> {{ homepage_message.link_text }}</a>
+    {% if homepage_messages %}
+    <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
+        <span class="me-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </span>
+        <div class="fw-bold mb-0 flex-grow-1">
+            {% if current_user.role == UserRole.TUTOR %}
+                To allow for students to book appointments with you, please:
+            {% else %}
+                To book appointment with a tutor, first you must:
+            {% endif %}
         </div>
-    {% endif %}
+    </div>
+    {% for msg in homepage_messages %}
+        <div class="alert alert-{{ msg.type }} d-flex align-items-center mb-2" role="alert">
+            <div class="fw-bold flex-grow-1 mb-0">
+                {{ msg.text }}
+                <a href="{{ msg.link_url }}" class="alert-link">{{ msg.link_text }}</a>
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

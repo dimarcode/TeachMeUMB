@@ -165,14 +165,14 @@ class Appointment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     tutor_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'))
-
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id')) 
     created_date: so.Mapped[datetime] = so.mapped_column(index=True, default=lambda: datetime.now(timezone.utc))
+    directions = db.Column(db.String(240), default='No additional directions provided', nullable=True)
     booking_date = db.Column(db.Date, nullable=False)
     booking_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
     actual_start_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
     actual_end_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=True)
     status = db.Column(db.String(20), default='confirmed', nullable=False)
-    location: so.Mapped[str] = so.mapped_column(sa.String(100), nullable=False)
 
     # Track who last updated the appointment
     last_updated_by = db.Column(db.Enum(UserRole), nullable=True)
@@ -184,23 +184,22 @@ class Appointment(db.Model):
         back_populates='appointment',
         passive_deletes=True  # optional, but recommended for ondelete to work
     )
-
-    def confirm(self, user_role):
-        """Confirm the appointment."""
-        self.status = 'confirmed'
-        self.last_updated_by = user_role
+    appointment_location = so.relationship(
+        'Location',
+        back_populates='appointments'
+    )
 
     def cancel(self, user_role):
         """Cancel the appointment."""
         self.status = 'cancelled'
         self.last_updated_by = user_role
 
-    def update(self, booking_date, booking_time, user_role, location):
+    def update(self, booking_date, booking_time, user_role, location_id, directions):
         """Update the appointment details."""
-        self.location = location
+        self.location_id = location_id
         self.booking_date = booking_date
-        self.booking_time = booking_time
-        self.status = 'pending'
+        self.booking_datetime = booking_time
+        self.directions = directions
         self.last_updated_by = user_role
 
     def get_html_url(self):
@@ -210,6 +209,25 @@ class Appointment(db.Model):
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
                 f"Status: {self.status}, Last Updated By: {self.last_updated_by}>")
+
+
+class Location(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(100), unique=True, nullable=False)
+    google_maps_link: so.Mapped[str] = so.mapped_column(sa.String(200), nullable=True)
+
+    appointments = so.relationship(
+        'Appointment',
+        back_populates='appointment_location'
+    )
+
+    location_alert = so.relationship(
+        'Alert',
+        back_populates='alert_location',
+    )
+
+    def __repr__(self):
+        return f"<Location {self.name} - {self.google_maps_link}>"
 
 
 class Review(db.Model):
@@ -247,35 +265,62 @@ class Post(db.Model):
 
 class Alert(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
-    status: so.Mapped[str] = so.mapped_column(sa.String(20), default='active', index=True) # unread, read, acknowledged
-    subject: so.Mapped[str] = so.mapped_column(sa.String(140)) # subject/headline of the alert
-    message: so.Mapped[str] = so.mapped_column(sa.String(140)) # relevant information
     category: so.Mapped[str] = so.mapped_column(sa.String(50), index=True, default='general') # what type of alert (booked appointment, canceled appointment, etc.)
+    status: so.Mapped[str] = so.mapped_column(sa.String(20), default='active', index=True) # unread, read, acknowledged
+    headline: so.Mapped[str] = so.mapped_column(sa.String(140)) # subject/headline of the alert
+    message: so.Mapped[str] = so.mapped_column(sa.String(140)) # relevant information
     timestamp: so.Mapped[datetime] = so.mapped_column(
         index=True, default=lambda: datetime.now(timezone.utc))
     relevant_date = db.Column(db.Date)
     relevant_time: so.Mapped[datetime] = so.mapped_column(sa.DateTime(timezone=True), nullable=False)
-    recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True) # who is receiving the alert
-    catalyst_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), nullable=True) 
+    subject_name: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Subject.id), nullable=True) # subject related to the alert
     appointment_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Appointment.id), nullable=True) # appointment attached to the alert
+    recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True) # who is receiving the alert
+    catalyst_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), nullable=True)
+    location_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Location.id), nullable=True) # location related to the alert
     # Correctly define the recipient relationship
+    
     recipient: so.Mapped[User] = so.relationship(
         "User",
         foreign_keys=[recipient_id],
         back_populates="alerts_received"
     )
+    
     catalyst: so.Mapped[User] = so.relationship(
         "User",
         foreign_keys=[catalyst_id],
         back_populates="alerts_caused",
         lazy="joined"
     )
+
     alert_appointment: so.Mapped[Appointment] = so.relationship(
         "Appointment",
         foreign_keys=[appointment_id],
         back_populates="appointment_alert",
         lazy="joined"
     )
+
+    alert_location: so.Mapped[Location] = so.relationship(
+        "Location",
+        foreign_keys=[location_id],
+        back_populates="location_alert",
+        lazy="joined"
+    )
+
+    def remove(self):
+        """Remove the alert from the database."""
+        db.session.delete(self)
+        db.session.commit()
+
+    def archive(self):
+        """Set the alert status to 'archived'."""
+        self.status = 'archived'
+        db.session.commit()
+
+    def reset(self):
+        """Reset the alert status to 'active'."""
+        self.status = 'active'
+        db.session.commit()
 
     def __repr__(self):
         return '<Alert {}>'.format(self.message)

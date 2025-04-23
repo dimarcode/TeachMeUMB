@@ -5,19 +5,31 @@
         </span>
     </div>
     <div class="flex-grow-1">
-        <div class="fw-bold mb-1">{{ alert.subject }}</div>
+        <div class="fw-bold mb-1">{{ alert.headline }}</div>
         <div id="alert-message-{{ alert.id }}" data-timestamp="{{ alert.timestamp }}">
             <a href="{{ url_for('user', username=alert.catalyst.username) }}" class="fw-semibold">{{ alert.catalyst.username }}</a>
             {{ alert.message }}
         </div>
         <div class="small text-muted mt-1">
-            <span><strong>Date:</strong> {{ alert.relevant_date.strftime('%B %d, %Y') }}</span> |
-            <span><strong>Time:</strong> {{ moment(alert.relevant_time).format('LT') }}</span> |<br>
-            <span><strong>Location:</strong> {{ alert.location }}</span>
+            {% if alert.relevant_date or alert.relevant_time %}
+                <span><strong>Date:</strong> {{ alert.relevant_date.strftime('%B %d, %Y') }}</span>
+                <span><strong>Time:</strong> {{ moment(alert.relevant_time).format('LT') }}</span>
+                <span><strong>Location:</strong> {{ alert.alert_location.name }}</span>
+            {% else %}
+                <span>No appointment details available.</span>
+            {% endif %}
         </div>
         <div class="small text-info mt-1">Check your appointments page.</div>
         <small class="text-muted" id="formatted-timestamp-{{ alert.id }}"></small>
+        <!-- Action buttons -->
+        <div class="mt-2">
+            {% if alert.status == 'active' %}
+                <a href="{{ url_for('archive_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-secondary">Archive</a>
+            {% else %}
+                <a href="{{ url_for('reset_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-primary">Reset</a>
+            {% endif %}
+            <a href="{{ url_for('remove_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Are you sure you want to delete this alert?');">Delete</a>
+        </div>
     </div>
 </li>
-
-    

@@ -9,7 +9,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import app, db
-from app.models import Subject
+from app.models import Subject, Location
+
 
 def import_subjects_data():
     with app.app_context():
@@ -64,4 +65,55 @@ def import_subjects_data():
             import traceback
             traceback.print_exc()
 
+def import_locations_data():
+    with app.app_context():
+        # Clear existing data
+        db.session.query(Location).delete()
+        db.session.commit()
+        print("Locations table cleared.")
 
+        data_file = Path(app.root_path) / 'custom' / 'data' / 'locations.csv'
+        print(f"Looking for data file at: {data_file}")
+        
+        if not data_file.exists():
+            print(f"Error: File does not exist at {data_file}")
+            return
+
+        try:
+            with open(data_file, 'r', encoding='utf-8-sig') as f:
+                reader = csv.reader(f)
+                
+                # Skip header if it exists
+                # Uncomment if your CSV has a header row
+                # next(reader, None)
+                
+                locations = []
+                row_num = 0
+                
+                for row in reader:
+                    row_num += 1
+                    if len(row) != 3:
+                        print(f"Row in classes.csv {row_num} has {len(row)} columns, expected 3: {row}")
+                        continue
+                    
+                    try:
+                        location = Location(
+                            id=int(row[0].strip()),
+                            name=row[1].strip(),
+                            google_maps_link=row[2].strip(),
+                        )
+                        locations.append(location)
+                    except Exception as e:
+                        print(f"Error in row {row_num}: {e} - {row}")
+                
+                if locations:
+                    db.session.bulk_save_objects(locations)
+                    db.session.commit()
+                    print(f"Successfully imported {len(locations)} locations")
+                else:
+                    print("No locations were imported")
+
+        except Exception as e:
+            print(f"Error reading {data_file}: {e}")
+            import traceback
+            traceback.print_exc()

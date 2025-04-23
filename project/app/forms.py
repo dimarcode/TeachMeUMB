@@ -3,7 +3,8 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextA
 from wtforms.validators import ValidationError, DataRequired, InputRequired, Email, EqualTo, Length, Regexp, NumberRange, Optional
 import sqlalchemy as sa
 from app import db
-from app.models import User, UserRole, Subject, user_subject
+from app.models import User, UserRole, Subject, user_subject, Location
+from flask_login import current_user
 
 
 class LoginForm(FlaskForm):
@@ -82,25 +83,28 @@ class BookAppointmentForm(FlaskForm):
     subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
     booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
     booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
-    location = SelectField('Location', choices=[
-        ('campus_center', 'Campus Center'),
-        ('healey_library', 'Healey Library'),
-        ('university_hall', 'University Hall'),
-        ('online', 'Online')
-    ])
+    location_id = SelectField('Location', coerce=int, validators=[DataRequired()])
+    directions = TextAreaField('Directions', validators=[Optional(), Length(max=200)])
     submit = SubmitField("Book Appointment")
 
+    def __init__(self, *args, **kwargs):
+        super(UserSubjectForm, self).__init__(*args, **kwargs)
+        self.subject_id.choices = [(s.id, f"{s.name} - {s.topic}") for s in current_user.mysubjects]
+
+    def __init__(self, *args, **kwargs):
+        super(BookAppointmentForm, self).__init__(*args, **kwargs)
+        self.location_id.choices = [(l.id, f"{l.name}") for l in Location.query.order_by(Location.name).all()]
+
 class UpdateAppointmentForm(FlaskForm):
-    booking_date = DateField("New Date", format='%Y-%m-%d', validators=[DataRequired()])
-    booking_time = TimeField("New Time", format='%H:%M', validators=[DataRequired()])
-    location = SelectField('Location', choices=[
-        ('campus_center', 'Campus Center 3rd Floor'),
-        ('healey_library', 'Healey Library'),
-        ('university_hall', 'University Hall'),
-        ('online', 'Online')
-    ])
+    booking_date = DateField("Date", format='%Y-%m-%d', validators=[DataRequired()])
+    booking_time = TimeField("Time", format='%H:%M', validators=[DataRequired()])
+    location_id = SelectField('Location', coerce=int, validators=[DataRequired()])
+    directions = TextAreaField('Directions', validators=[Optional(), Length(max=200)])
     submit = SubmitField("Update Appointment")
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.location_id.choices = [(l.id, f"{l.name}") for l in Location.query.order_by(Location.name).all()]   
 
 class RequestClassForm(FlaskForm):
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
@@ -184,20 +188,3 @@ class TestAvailabilityForm(FlaskForm):
     )
     date = DateField('Date', format='%Y-%m-%d', validators=[DataRequired()])
     submit = SubmitField('Check Availability')
-# class AvailabilityForm(FlaskForm):
-#     day_of_week = SelectField('Day of Week', 
-#         choices=[
-#             ('0', 'Monday'),
-#             ('1', 'Tuesday'),
-#             ('2', 'Wednesday'),
-#             ('3', 'Thursday'),
-#             ('4', 'Friday'),
-#             ('5', 'Saturday'),
-#             ('6', 'Sunday')
-#         ],
-#         coerce=int,  # This ensures the value is converted to an integer
-#         validators=[InputRequired()]
-#     )
-#     start_time = TimeField('Start Time', validators=[DataRequired()])
-#     end_time = TimeField('End Time', validators=[DataRequired()])
-#     submit = SubmitField('Add Availability')

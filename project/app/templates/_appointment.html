@@ -22,7 +22,7 @@
                     <div class="col">
                         <strong>Date:</strong> {{ appointment.booking_date.strftime('%B %d, %Y') }}<br>
                         <strong>Time:</strong> {{ moment(appointment.booking_time).format('LT') }}<br>
-                        <strong>Location:</strong> {{ appointment.location }}<br>
+                        <strong>Location:</strong> {{ appointment.appointment_location.name }}<br>
                         <span class="badge bg-secondary text-uppercase">{{ appointment.status }}</span>
                     </div>
                     <div class="col">
@@ -30,16 +30,16 @@
                         {{ moment(appointment.created_date).format('LLL') }}
                     </div>
                     <div class="col d-flex flex-column gap-1 align-items-center">
-                        <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm mb-1">Update</a>
-                        {% if appointment.status == 'pending' and current_user.role.value != appointment.last_updated_by.value %}
-                            <form action="{{ url_for('confirm_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                                {{ form.hidden_tag() }}
-                                <button type="submit" class="btn btn-success btn-sm mb-1">Confirm</button>
-                            </form>
-                        {% endif %}
-                        {% if appointment.status == 'confirmed' and current_user.role == UserRole.TUTOR %}
+                        
+                        <form action="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" method="post">
+                            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                            <input type="hidden" name="tutor_id" value="{{ appointment.tutor.id }}">
+                            <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm mb-1">Update</a>
+                        </form>
+                        
+                        {% if current_user.role == UserRole.TUTOR %}
                             <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success">
-                                Begin Appointment
+                                Begin
                             </a>
                         {% endif %}
                             <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">

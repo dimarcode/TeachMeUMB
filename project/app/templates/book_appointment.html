@@ -2,85 +2,114 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2>Book Appointment with {{ tutor.username }}</h2>
-    <p><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
-    <p><strong>Email:</strong> {{ tutor.email }}</p>
-
-    <!-- Calendar Navigation -->
-    <div class="container d-flex justify-content-between align-items-center mb-3">
-        <button id="prev-week" class="btn btn-outline-primary btn-sm">&larr; Previous Week</button>
-        <h5 id="current-week" class="text-center mb-0"></h5>
-        <button id="next-week" class="btn btn-outline-primary btn-sm">Next Week &rarr;</button>
-    </div>
-
-    <!-- Calendar Table -->
-    <div class="container">
-        <div class="table-responsive-sm">
-            <table class="table table-sm align-middle">
-                <thead class="calendar-header">
-                    <tr>
-                        {% for i in range(7) %}
-                        <th scope="col" id="day-{{ i }}" class="day border px-1">
-                            <button type="button" class="clickable-day btn btn-link text-truncate w-100 small"></button>
-                        </th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-            </table>
-        </div>
-    </div>
-    
-
-    <!-- Booking Form -->
-    <form method="post">
-        {{ form.hidden_tag() }}
-        
-        <!-- Hidden Tutor field -->
-        <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
-
-        
-        <!-- Subject Selection -->
-        <div class="form-group mb-3">
-            <label for="subject_id">Select Subject:</label>
-            <select class="form-select" id="subject_id" name="subject_id" required>
-                <option value="" disabled selected>Select a subject...</option>
-                {% for choice in form.subject_id.choices %}
-                    <option value="{{ choice[0] }}">{{ choice[1] }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <!-- Location Selection -->
-        <div class="form-group">
-            {{ form.location.label }}
-            {{ form.location(class="form-control") }}
-        </div>
-
-        <!-- Hidden Date and Time Fields -->
-        <input type="hidden" id="selected_date" name="booking_date" value="">
-        <input type="hidden" id="selected_time" name="booking_time">
-
-        <!-- Selected Date Display -->
-        <div class="mt-4">
-            <p id="date-display">Selected Date: None</p>
-        </div>
-
-        <!-- Time Slots -->
-        <div class="form-group mb-3">
-            <label>Available Time Slots:</label>
-            <div id="time_slots" class="d-flex flex-wrap gap-2">
+    <div class="row">
+        <!-- Tutor Info -->
+        <div class="col-12 col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-2">Book Appointment with <span class="text-primary">{{ tutor.username }}</span></h4>
+                    <p class="mb-1"><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
+                    <p class="mb-1"><strong>Email:</strong> <a href="mailto:{{ tutor.email }}">{{ tutor.email }}</a></p>
+                </div>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Book Appointment</button>
-    </form>
+        <!-- Calendar & Form -->
+        <div class="col-12 col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <!-- Calendar Navigation -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button id="prev-week" class="btn btn-outline-primary btn-sm">&larr; Previous Week</button>
+                        <h5 id="current-week" class="text-center mb-0"></h5>
+                        <button id="next-week" class="btn btn-outline-primary btn-sm">Next Week &rarr;</button>
+                    </div>
 
-    <!-- Debug Information -->
-    <div class="mt-4">
-        <p>API Response:</p>
-        <div id="rawJsonDiv"></div>
-    </div>
-</div>
+                    <!-- Calendar Table -->
+                    <div class="table-responsive-sm mb-4">
+                        <table class="table table-sm align-middle">
+                            <thead class="calendar-header">
+                                <tr>
+                                    {% for i in range(7) %}
+                                    <th scope="col" id="day-{{ i }}" class="day border px-1">
+                                        <button type="button" class="clickable-day btn btn-link text-truncate w-100 small"></button>
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+
+                    <!-- Booking Form -->
+                    <form method="post">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+
+                        <!-- Selected Date Display -->
+                        <div class="mb-3">
+                            <span class="fw-semibold" id="date-display">Selected Date: None</span>
+                        </div>
+                        <input type="hidden" id="selected_date" name="booking_date" value="">
+                        <input type="hidden" id="selected_time" name="booking_time">
+
+                        <!-- Time Slots -->
+                        <div class="form-group mb-3">
+                            <label class="fw-semibold">Available Time Slots:</label>
+                            <div id="time_slots" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <!-- Subject Selection -->
+                        <div class="form-group mb-3">
+                            <label for="subject_id" class="fw-semibold">Select Subject:</label>
+                            <select class="form-select" id="subject_id" name="subject_id" required>
+                                <option value="" disabled selected>Select a subject...</option>
+                                {% for choice in form.subject_id.choices %}
+                                    <option value="{{ choice[0] }}">{{ choice[1] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Location Selection -->
+                        <div class="form-group mb-3">
+                            {{ form.location_id.label(class="fw-semibold") }}
+                            {{ form.location_id(class="form-control") }}
+                            {% for error in form.location_id.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="form-group mb-3">
+                            {{ form.directions.label(class="fw-semibold") }}
+                            {{ form.directions(class="form-control") }}
+                            {% for error in form.directions.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="submit-btn" disabled>Book Appointment</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Debug Information (collapsible) -->
+            <div class="accordion" id="debugAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingDebug">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDebug" aria-expanded="false" aria-controls="collapseDebug">
+                            API Debug Information
+                        </button>
+                    </h2>
+                    <div id="collapseDebug" class="accordion-collapse collapse" aria-labelledby="headingDebug" data-bs-parent="#debugAccordion">
+                        <div class="accordion-body">
+                            <div id="rawJsonDiv"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- row -->
+</div> <!-- container -->
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 

@@ -3,14 +3,13 @@
 {% block content %}
     
     <h1>Alerts</h1>
-    {% if alerts %}
+    {% if active_alerts %}
         <ul>
-            {% for alert in alerts %}
+            {% for alert in active_alerts %}
                 {% include '_alert.html' with context %}
             {% endfor %}
         </ul>
-        
-    {% else %}
+    {% elif not archived_alerts %}
         <p>No alerts to display.</p>
     {% endif %}
     
@@ -22,6 +21,16 @@
         {% else %}
             <p>No messages to display.</p>
         {% endif %}
+    {% if archived_alerts %}
+    <h3>Archived Alerts</h3>
+        <ul>
+            {% for alert in archived_alerts %}
+                {% include '_alert.html' with context %}
+            {% endfor %}
+        </ul>
+    {% elif not archived_alerts %}
+        <p>No archived alerts to display.</p>
+    {% endif %}
     <nav aria-label="...">
         <ul class="pager">
             <li class="previous{% if not prev_url %} disabled{% endif %}">
