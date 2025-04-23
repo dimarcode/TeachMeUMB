@@ -4,6 +4,8 @@
 
 <h1>Hi, {{ current_user.username }}!</h1>
 
+    
+
     {% if homepage_messages %}
     <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
         <span class="me-2">
@@ -46,7 +48,14 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     {% endif %}
-    
+    {% if appointments_needing_review %}
+    <div class="mt-5">
+        <h3>Appointments Needing Your Review</h3>
+        {% for appointment in appointments_needing_review %}
+            {% include '_appointment.html' with context %}
+        {% endfor %}
+    </div>
+    {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -178,22 +187,5 @@
                     {% endfor %}
             {% endif %}
         </div>
-    {% endif %}
-    <!-- Requested Subjects Section -->
-    {% if current_user.role == UserRole.STUDENT %}
-    <div class="mt-5">
-        <h2>Your Requested Classes</h2>
-        {% if requested_subjects %}
-            <ul class="list-group">
-                {% for subject in requested_subjects %}
-                    <li class="list-group-item">
-                        {{ subject.name }} - {{ subject.topic }}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>You haven't requested any classes yet.</p> 
-        {% endif %}
-    </div>
     {% endif %}
 {% endblock %}

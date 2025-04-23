@@ -6,6 +6,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 from flask_moment import moment
 import sqlalchemy as sa
+from sqlalchemy import select
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
 BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, MessageForm, ResetPasswordRequestForm, \
@@ -168,6 +169,34 @@ def index():
                 'link_url': url_for('add_subject')
             })
 
+    def get_appointments_needing_review(user):
+        # Appointments where user is a participant, status is 'needs_review', and user hasn't reviewed yet
+        appointments = (
+            db.session.scalars(
+                select(Appointment)
+                .where(
+                    ( (Appointment.student_id == user.id) | (Appointment.tutor_id == user.id) ),
+                    Appointment.status == 'needs_review'
+                )
+            ).all()
+        )
+        # Filter out those already reviewed by this user
+        needing_review = []
+        for appt in appointments:
+            # Query for a review by this user for this appointment
+            review_exists = db.session.scalar(
+                select(Review).where(
+                    Review.appointment_id == appt.id,
+                    Review.author_id == user.id
+                )
+            )
+            if not review_exists:
+                needing_review.append(appt)
+        return needing_review
+
+    # In your route:
+    appointments_needing_review = get_appointments_needing_review(current_user)
+
     return render_template(
         'index.html',
         pending_needs_approval=pending_needs_approval,
@@ -177,15 +206,18 @@ def index():
         requested_subjects=requested_subjects,
         form=form,
         UserRole=UserRole,
-        homepage_messages=homepage_messages
+        homepage_messages=homepage_messages,
+        appointments_needing_review=appointments_needing_review
     )
+
 
 
 @app.route('/api/events')
 @login_required
 def api_events():
     appointments = Appointment.query.filter(
-        (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
+        ((Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)) &
+        (~Appointment.status.in_(['needs_review', 'completed']))
     ).all()
 
     eastern = pytz_timezone("America/New_York")
@@ -219,7 +251,18 @@ def api_events():
 def user(username):
     user = db.first_or_404(sa.select(User).where(User.username == username))
     form = BookAppointmentForm()  # Create an instance of the form
-    return render_template('user.html', user=user, form=form, UserRole = UserRole)
+    my_subject_ids = [subject.id for subject in current_user.my_subjects]
+
+    requested_subjects = (
+        db.session.query(Subject)
+        .join(RequestedSubject)
+        .filter(
+            RequestedSubject.student_id == current_user.id,
+            Subject.id.in_(my_subject_ids)
+        )
+        .all()
+    )
+    return render_template('user.html', user=user, form=form, requested_subjects=requested_subjects, UserRole = UserRole)
 
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
@@ -670,37 +713,55 @@ def api_get_timeslots():
     return jsonify({'available_times': available_times})
 
 
-@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST']) # Begin an appointment
+@app.route('/appointment/<int:appointment_id>/begin', methods=['GET', 'POST'])
 @login_required
 def begin_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
+    if current_user.role != UserRole.TUTOR or appointment.tutor_id != current_user.id:
+        flash("Only the assigned tutor can begin this appointment.", "danger")
+        return redirect(url_for('index'))
     form = BeginAppointmentForm()
     if form.validate_on_submit():
         appointment.actual_start_time = datetime.combine(appointment.booking_date, form.start_time.data)
         appointment.actual_end_time = datetime.combine(appointment.booking_date, form.end_time.data)
-
+        appointment.complete(current_user.role)  # Set status to 'needs_review'
         db.session.commit()
         return redirect(url_for('review_appointment', appointment_id=appointment.id))
     return render_template('begin_appointment.html', form=form, appointment=appointment)
 
 
-@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST']) # Review the tutor
+@app.route('/appointment/<int:appointment_id>/review', methods=['GET', 'POST'])
 @login_required
 def review_appointment(appointment_id):
     appointment = Appointment.query.get_or_404(appointment_id)
+    if current_user.id not in [appointment.student_id, appointment.tutor_id]:
+        flash("You are not authorized to review this appointment.", "danger")
+        return redirect(url_for('index'))
+    already_reviewed = db.session.scalar(
+        select(Review).where(
+            Review.appointment_id == appointment.id,
+            Review.author_id == current_user.id
+        )
+    ) is not None
+    if already_reviewed:
+        flash("You have already reviewed this appointment.", "info")
+        return redirect(url_for('index'))
     form = ReviewAppointmentForm()
     if form.validate_on_submit():
+        recipient_id = appointment.tutor_id if current_user.id == appointment.student_id else appointment.student_id
         review = Review(
             appointment_id=appointment.id,
-            student_id=current_user.id,
-            tutor_id=appointment.tutor_id,
+            author_id=current_user.id,
+            recipient_id=recipient_id,
             stars=form.stars.data,
             text=form.text.data
         )
         db.session.add(review)
-        appointment.status = 'completed'
+        # Only finalize if both have reviewed
+        if appointment.both_reviewed():
+            appointment.finalize(current_user.role)
         db.session.commit()
-        flash(f"Your appointment with {appointment.tutor.username} has been successfully completed! Thanks for your review.", "success")
+        flash("Thank you for your review!", "success")
         return redirect(url_for('index'))
     return render_template('review_appointment.html', form=form, appointment=appointment)
 

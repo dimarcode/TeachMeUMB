@@ -1,51 +1,66 @@
 <tr>
     <td colspan="8">
-        <div class="card mb-3">
+        <div class="card shadow-sm mb-4">
             <div class="card-body">
-                <div class="row align-items-center text-center">
-                    <div class="col">
-                        <strong>Appointment #{{ appointment.id }}</strong><br>
+                <div class="row align-items-center text-center g-3">
+                    <div class="col-md-2">
+                        <div class="fw-bold mb-2">Appointment #{{ appointment.id }}</div>
                         {% if current_user.role == UserRole.TUTOR %}
-                        <strong>Student:</strong><br>
-                            <img src="{{ appointment.student.avatar(25) }}">
-                            <a href="{{ url_for('user', username=appointment.student.username) }}">{{ appointment.student.username }}</a>
+                            <div class="small text-muted">Student</div>
+                            <img src="{{ appointment.student.avatar(40) }}" class="rounded-circle border mb-1" alt="Student avatar">
+                            <div>
+                                <a href="{{ url_for('user', username=appointment.student.username) }}" class="fw-semibold">{{ appointment.student.username }}</a>
+                            </div>
                         {% else %}
-                        <strong>Tutor:</strong><br>
-                            <img src="{{ appointment.tutor.avatar(25) }}">
-                            <a href="{{ url_for('user', username=appointment.tutor.username) }}">{{ appointment.tutor.username }}</a>
+                            <div class="small text-muted">Tutor</div>
+                            <img src="{{ appointment.tutor.avatar(40) }}" class="rounded-circle border mb-1" alt="Tutor avatar">
+                            <div>
+                                <a href="{{ url_for('user', username=appointment.tutor.username) }}" class="fw-semibold">{{ appointment.tutor.username }}</a>
+                            </div>
                         {% endif %}
                     </div>
-                    <div class="col">
-                        <strong>Subject:</strong> {{ appointment.subject.name }}<br>
-                        <small>{{ appointment.subject.topic }}</small>
+                    <div class="col-md-3">
+                        <div class="fw-bold">Subject</div>
+                        <div>{{ appointment.subject.name }}</div>
+                        <div class="text-muted small">{{ appointment.subject.topic }}</div>
                     </div>
-                    <div class="col">
-                        <strong>Date:</strong> {{ appointment.booking_date.strftime('%B %d, %Y') }}<br>
-                        <strong>Time:</strong> {{ moment(appointment.booking_time).format('LT') }}<br>
-                        <strong>Location:</strong> {{ appointment.appointment_location.name }}<br>
-                        <span class="badge bg-secondary text-uppercase">{{ appointment.status }}</span>
+                    <div class="col-md-3">
+                        <div><span class="fw-bold">Date:</span> {{ appointment.booking_date.strftime('%B %d, %Y') }}</div>
+                        <div><span class="fw-bold">Time:</span> {{ moment(appointment.booking_time).format('LT') }}</div>
+                        <div><span class="fw-bold">Location:</span> {{ appointment.appointment_location.name }}</div>
+                        <!-- <span class="badge 
+                            {% if appointment.status == 'confirmed' %}
+                                bg-success
+                            {% elif appointment.status == 'cancelled' %}
+                                bg-danger
+                            {% elif appointment.status == 'completed' %}
+                                bg-primary
+                            {% else %}
+                                bg-secondary
+                            {% endif %}
+                            text-uppercase mt-2">
+                            {{ appointment.status }}
+                        </span> -->
                     </div>
-                    <div class="col">
-                        <strong>Created:</strong><br>
-                        {{ moment(appointment.created_date).format('LLL') }}
+                    <div class="col-md-2">
+                        <div class="fw-bold">Created</div>
+                        <div class="small text-muted">{{ moment(appointment.created_date).format('LLL') }}</div>
                     </div>
-                    <div class="col d-flex flex-column gap-1 align-items-center">
-                        
-                        <form action="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" method="post">
-                            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                            <input type="hidden" name="tutor_id" value="{{ appointment.tutor.id }}">
-                            <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm mb-1">Update</a>
-                        </form>
+                    <div class="col-md-2 d-flex flex-column gap-2 align-items-center">
                         
                         {% if current_user.role == UserRole.TUTOR %}
-                            <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success">
-                                Begin
-                            </a>
+                            
                         {% endif %}
-                            <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" style="display:inline;">
-                            {{ form.hidden_tag() }}
-                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
-                        </form>
+                        {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
+                            <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
+                        {% elif appointment.status not in ['needs_review', 'completed'] %}
+                            <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
+                            <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
+                            <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" class="w-100">
+                                {{ form.hidden_tag() }}
+                                <button type="submit" class="btn btn-danger btn-sm w-100">Cancel</button>
+                            </form>
+                        {% endif %}
                     </div>
                 </div>
             </div>

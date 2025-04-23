@@ -7,7 +7,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as so
 from datetime import datetime, timezone
 from sqlalchemy.sql import func
-from sqlalchemy import Column, Integer, DateTime
+from sqlalchemy import Column, Integer, DateTime, select
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
@@ -90,9 +90,11 @@ class User(UserMixin, db.Model):
         foreign_keys="Alert.catalyst_id", back_populates="catalyst", lazy="dynamic")
     availabilities: so.WriteOnlyMapped['Availability'] = so.relationship(back_populates='tutor', cascade='all, delete-orphan')
     reviews_left: so.WriteOnlyMapped['Review'] = so.relationship(
-        foreign_keys='Review.student_id', back_populates='student', cascade='all, delete-orphan')
+        foreign_keys='Review.author_id', back_populates='author', cascade='all, delete-orphan'
+    )
     reviews_received: so.WriteOnlyMapped['Review'] = so.relationship(
-        foreign_keys='Review.tutor_id', back_populates='tutor', cascade='all, delete-orphan')
+        foreign_keys='Review.recipient_id', back_populates='recipient', cascade='all, delete-orphan'
+    )
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -204,7 +206,35 @@ class Appointment(db.Model):
 
     def get_html_url(self):
         """Generate an HTML link for the appointment."""
-        return f'<a href="/appointment/{self.id}">{self.subject.name} with {self.tutor.username}</a>'
+        return f'<a href="/appointment/{self.id}">{self.subject.name} \
+        with {self.tutor.username}</a>'
+
+    def complete(self, user_role):
+        """Mark the appointment as needing review."""
+        self.status = 'needs_review'
+        self.last_updated_by = user_role
+
+    def finalize(self, user_role):
+        """Mark the appointment as completed."""
+        self.status = 'completed'
+        self.last_updated_by = user_role
+
+    def review_by(self, user):
+        """Return the review left by this user for this appointment, or None."""
+        return db.session.scalar(
+            select(Review).where(
+                Review.appointment_id == self.id,
+                Review.author_id == user.id
+            )
+        )
+
+    def both_reviewed(self):
+        """Return True if both student and tutor have reviewed this appointment."""
+        reviews = db.session.scalars(
+            select(Review.author_id).where(Review.appointment_id == self.id)
+        ).all()
+        reviewer_ids = set(reviews)
+        return self.student_id in reviewer_ids and self.tutor_id in reviewer_ids
 
     def __repr__(self):
         return (f"<Appointment {self.id} - {self.booking_date} @ {self.booking_time} - "
@@ -235,19 +265,23 @@ class Review(db.Model):
     appointment_id: so.Mapped[int] = so.mapped_column(
         sa.ForeignKey('appointment.id', ondelete='SET NULL'), nullable=True
     )
-    student_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
-    tutor_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
+    author_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
+    recipient_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('user.id'), nullable=False)
     timestamp: so.Mapped[datetime] = so.mapped_column(default=lambda: datetime.now(timezone.utc))
     stars: so.Mapped[int] = so.mapped_column(sa.Integer, nullable=False)  # 1-5
     text: so.Mapped[Optional[str]] = so.mapped_column(sa.Text, nullable=True)
 
     # Relationships
     appointment: so.Mapped['Appointment'] = so.relationship(back_populates='reviews')
-    student: so.Mapped['User'] = so.relationship(foreign_keys=[student_id], back_populates='reviews_left')
-    tutor: so.Mapped['User'] = so.relationship(foreign_keys=[tutor_id], back_populates='reviews_received')
+    author: so.Mapped['User'] = so.relationship(
+        foreign_keys=[author_id], back_populates='reviews_left'
+    )
+    recipient: so.Mapped['User'] = so.relationship(
+        foreign_keys=[recipient_id], back_populates='reviews_received'
+    )
 
     def __repr__(self):
-        return f"<Review {self.id} by Student {self.student_id} for Tutor {self.tutor_id} - {self.stars} stars>"
+        return f"<Review {self.id} by {self.author_id} for {self.recipient_id} - {self.stars} stars>"
 
 
 class Post(db.Model):

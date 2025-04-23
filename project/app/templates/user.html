@@ -3,46 +3,54 @@
 {% block content %}
 
     
-    <div class="container mt-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="row g-4 align-items-start">
-                    <div class="col-md-3 text-center">
-                        <img src="{{ user.avatar(256) }}" class="img-fluid rounded-circle border" alt="User avatar">
-                    </div>
-                    <div class="col-md-9">
-                        <h2 class="mb-2">{{ user.username }}</h2>
-                        {% if user.about_me %}
-                            <p class="text-muted">{{ user.about_me }}</p>
-                        {% endif %}
-                    <ul class="list-unstyled">
-                        {% if user.last_seen %}<li><strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}</li>{% endif %}
-                        <li><strong>Email:</strong> {{ user.email }}</li>
-                        <li><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
-                        <li><strong>Role:</strong> {{ user.role.value }}</li>
+    <div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white text-center">
+            <h2 class="mb-0">{{ user.username }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row g-4 align-items-center">
+                <div class="col-md-3 text-center">
+                    <img src="{{ user.avatar(256) }}" class="img-fluid rounded-circle border mb-3" alt="User avatar" style="max-width: 180px;">
+                    {% if user.last_seen %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}
+                            </small>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-9">
+                    {% if user.about_me %}
+                        <p class="lead text-muted">{{ user.about_me }}</p>
+                    {% endif %}
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
+                        <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
+                        <li class="list-group-item"><strong>Role:</strong> {{ user.role.value }}</li>
                     </ul>
-                    <div class="mt-3">
-                    {% if user == current_user %}
-                        <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
-                        <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
-                    {% endif %}
-                    {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
-                        <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm">Set Availability</a>
-                    {% endif %}
-                    {% if user != current_user %}
-                        <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username  }} A Message</a>
-                    {% endif %}
-                    {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_ser %}
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        {% if user == current_user %}
+                            <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                            <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
+                            <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm">Set Availability</a>
+                        {% endif %}
+                        {% if user != current_user %}
+                            <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username }} A Message</a>
+                        {% endif %}
                         {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_user and user.role == UserRole.TUTOR %}
                             <a href="{{ url_for('book_appointment', tutor_id=user.id) }}" class="btn btn-outline-primary btn-sm">Book Appointment</a>
                         {% endif %}
-                    {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="mt-4">
+</div>
+    
+    
         <div class="mt-5">
             {% if user == current_user %}
                 <h4 class="fw-bold text-primary mb-3">Your Current Classes</h4>
@@ -67,6 +75,24 @@
                 <div class="alert alert-info" role="alert">
                     You haven't enrolled in any classes yet.
                 </div>
+            {% endif %}
+        </div>
+        <div class="mt-5">
+            {% if current_user.is_authenticated and user == current_user and current_user.role == UserRole.STUDENT %}
+            <!-- Requested Subjects Section -->
+            <div class="mt-4">
+            {% if requested_subjects %}
+                <h4 class="fw-bold text-primary mb-3">Your Requested Classes</h4>
+                
+                    <ul class="list-group">
+                        {% for subject in requested_subjects %}
+                            <li class="list-group-item">
+                                {{ subject.name }} - {{ subject.topic }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </div>
