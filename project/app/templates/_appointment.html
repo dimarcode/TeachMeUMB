@@ -1,69 +1,80 @@
 <tr>
     <td colspan="8">
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <div class="row align-items-center text-center g-3">
-                    <div class="col-md-2">
-                        <div class="fw-bold mb-2">Appointment #{{ appointment.id }}</div>
-                        {% if current_user.role == UserRole.TUTOR %}
-                            <div class="small text-muted">Student</div>
-                            <img src="{{ appointment.student.avatar(40) }}" class="rounded-circle border mb-1" alt="Student avatar">
-                            <div>
-                                <a href="{{ url_for('user', username=appointment.student.username) }}" class="fw-semibold">{{ appointment.student.username }}</a>
-                            </div>
-                        {% else %}
-                            <div class="small text-muted">Tutor</div>
-                            <img src="{{ appointment.tutor.avatar(40) }}" class="rounded-circle border mb-1" alt="Tutor avatar">
-                            <div>
-                                <a href="{{ url_for('user', username=appointment.tutor.username) }}" class="fw-semibold">{{ appointment.tutor.username }}</a>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-3">
-                        <div class="fw-bold">Subject</div>
-                        <div>{{ appointment.subject.name }}</div>
-                        <div class="text-muted small">{{ appointment.subject.topic }}</div>
-                    </div>
-                    <div class="col-md-3">
-                        <div><span class="fw-bold">Date:</span> {{ appointment.booking_date.strftime('%B %d, %Y') }}</div>
-                        <div><span class="fw-bold">Time:</span> {{ moment(appointment.booking_time).format('LT') }}</div>
-                        <div><span class="fw-bold">Location:</span> {{ appointment.appointment_location.name }}</div>
-                        <!-- <span class="badge 
-                            {% if appointment.status == 'confirmed' %}
-                                bg-success
-                            {% elif appointment.status == 'cancelled' %}
-                                bg-danger
-                            {% elif appointment.status == 'completed' %}
-                                bg-primary
-                            {% else %}
-                                bg-secondary
-                            {% endif %}
-                            text-uppercase mt-2">
-                            {{ appointment.status }}
-                        </span> -->
-                    </div>
-                    <div class="col-md-2">
-                        <div class="fw-bold">Created</div>
-                        <div class="small text-muted">{{ moment(appointment.created_date).format('LLL') }}</div>
-                    </div>
-                    <div class="col-md-2 d-flex flex-column gap-2 align-items-center">
-                        
-                        {% if current_user.role == UserRole.TUTOR %}
-                            
-                        {% endif %}
-                        {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
-                            <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
-                        {% elif appointment.status not in ['needs_review', 'completed'] %}
-                            <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
-                            <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
-                            <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" class="w-100">
-                                {{ form.hidden_tag() }}
-                                <button type="submit" class="btn btn-danger btn-sm w-100">Cancel</button>
-                            </form>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+      <div class="card shadow-sm mb-3 border-light">
+        
+        <!-- Clickable Header with Location and Hint -->
+        <div class="card-header d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse"
+             data-bs-target="#details{{ appointment.id }}"
+             role="button"
+             style="cursor: pointer;">
+          <div>
+            <strong>#{{ appointment.id }}</strong> – {{ appointment.subject.name }}  
+            <span class="text-muted">
+              ({{ appointment.booking_date.strftime('%b %d') }} at {{ moment(appointment.booking_time).format('LT') }} @ {{ appointment.appointment_location.name }})
+            </span>
+          </div>
+          <div class="text-muted small d-none d-md-block"><em>Click to view details</em></div>
         </div>
+  
+        <!-- Collapsible Details -->
+        <div id="details{{ appointment.id }}" class="collapse">
+          <div class="card-body">
+            <div class="row text-center gy-2">
+              
+              <!-- Student or Tutor -->
+              <div class="col-md-3">
+                {% if current_user.role == UserRole.TUTOR %}
+                    <div>
+                        <a href="{{ url_for('user', username=appointment.student.username) }}" class="fw-bold">{{ appointment.student.username }}</a>
+                    </div>
+                    <img src="{{ appointment.student.avatar(40) }}" class="rounded-circle border mb-1" alt="Student avatar">
+                    <div class="small text-muted">Student</div>
+                    
+                    
+                {% else %}
+                    <div>
+                        <a href="{{ url_for('user', username=appointment.tutor.username) }}" class="fw-bold">{{ appointment.tutor.username }}</a>
+                    </div>
+                    <img src="{{ appointment.tutor.avatar(40) }}" class="rounded-circle border mb-1" alt="Tutor avatar">
+                    
+                    <div class="small text-muted">Tutor</div>
+                {% endif %}
+              </div>
+  
+              <!-- Subject -->
+              <div class="col-md-3">
+                <div class="fw-semibold">Subject</div>
+                {{ appointment.subject.name }}<br>
+                <small class="text-muted">{{ appointment.subject.topic }}</small>
+              </div>
+  
+              <!-- Location and Status -->
+              <div class="col-md-3">
+                <div class="fw-semibold">Location</div>
+                {{ appointment.appointment_location.name }}<br>
+                <span class="badge bg-secondary mt-1">{{ appointment.status }}</span>
+              </div>
+  
+              <!-- Actions -->
+              <div class="col-md-3 d-flex flex-column align-items-center gap-1">
+                {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
+                    <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
+                {% elif appointment.status not in ['needs_review', 'completed'] %}
+                    <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
+                    <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
+                    <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" class="w-100">
+                        {{ form.hidden_tag() }}
+                        <button type="submit" class="btn btn-danger btn-sm w-100">Cancel</button>
+                    </form>
+                {% endif %}
+              </div>
+  
+            </div>
+          </div>
+        </div>
+        
+      </div>
     </td>
-</tr>
+  </tr>
+  
