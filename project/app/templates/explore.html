@@ -79,7 +79,6 @@
                             <tr>
                                 <th>Student Username</th>
                                 <th>Email</th>
-                                <th>About Me</th>
                                 <th>Requested Class</th>
                                 <th>Actions</th>
                             </tr>
@@ -87,9 +86,8 @@
                         <tbody>
                             {% for request, student, subject in requested_classes %}
                             <tr>
-                                <td><a href="{{ url_for('user', username=student.username) }}">{{ student.username }}</a></td>
+                                <td><a class="fw-bold" href="{{ url_for('user', username=student.username) }}">{{ student.username }}</a></td>
                                 <td>{{ student.email }}</td>
-                                <td>{{ student.about_me }}</td>
                                 <td>{{ subject.name }} - {{ subject.topic }}</td>
                                 <td>
                                     {% if subject not in current_user.my_subjects %}
