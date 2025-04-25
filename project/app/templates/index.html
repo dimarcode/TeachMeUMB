@@ -51,7 +51,7 @@
     <div class="alert alert-primary alert-dismissible fade show d-flex align-items-center mt-3" role="alert">
         <i class="bi bi-info-circle-fill me-2 fs-5"></i>
         <div>
-            This dashboard is where you’ll find your appointment information.
+            This dashboard is where you’ll find your appointment information. {% if current_user.role == UserRole.TUTOR %}<br>When you are ready to start an appointment, click the "Begin" button next to the appointment.{% endif %}
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
