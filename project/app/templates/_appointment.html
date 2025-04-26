@@ -61,7 +61,9 @@
                 {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
                     <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
                 {% elif appointment.status not in ['needs_review', 'completed'] %}
-                    <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
+                    {% if current_user.role == 'TUTOR' %}
+                        <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
+                    {% endif %}
                     <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
                     <form action="{{ url_for('remove_appointment', appointment_id=appointment.id) }}" method="post" class="w-100">
                         {{ form.hidden_tag() }}
