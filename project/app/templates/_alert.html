@@ -25,7 +25,7 @@
                 <span>No appointment details available.</span>
             {% endif %}
         </div>
-        <div class="small text-info mt-1">Check your appointments page.</div>
+        <div class="small text-info mt-1">Check your <a href="{{url_for('index')}}">dashboard!</a></div>
         <div class="small text-muted mt-1">
             <span>Posted {{ moment(alert.timestamp).fromNow() }}</span>
         <!-- Action buttons -->
