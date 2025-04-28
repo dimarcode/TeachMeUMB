@@ -63,6 +63,8 @@ class User(UserMixin, db.Model):
         sa.String(8), unique=True)
     role: so.Mapped[UserRole] = so.mapped_column(sa.Enum(UserRole),
                                                  default=UserRole.STUDENT)
+    profile_picture: so.Mapped[str] = so.mapped_column(
+        sa.String(120), default='default.jpg')
     
     # defines relationship to user_subjects table, and therefore subjects table
     my_subjects = so.relationship("Subject", secondary=user_subject, 

@@ -14,6 +14,7 @@ ResetPasswordForm, AvailabilityForm, TestAvailabilityForm, BeginAppointmentForm,
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
 Notification, Alert, Availability, Review
 from app.email import send_password_reset_email
+from app.utils import save_picture
 
 
 @app.before_request
@@ -270,6 +271,9 @@ def user(username):
 def edit_profile():
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
+        if form.picture.data:
+            picture_file = save_picture(form.picture.data)
+            current_user.profile_picture = picture_file
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
@@ -278,6 +282,7 @@ def edit_profile():
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
+        form.profile_picture.data = current_user.profile_picture
     return render_template('edit_profile.html', title='Edit Profile',
                            form=form)
 
