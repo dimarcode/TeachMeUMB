@@ -1,6 +1,7 @@
 # Directories #
 ###############
 
+*tests.py
 *.py[cod]
 .vscode
 # C extensions
