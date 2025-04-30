@@ -16,13 +16,12 @@ services:
   backend:
     build: ./project
     ports:
-      - "5002:5000"
+      - "5003:5000"
     volumes:
       - ./project:/app
     environment:
       - FLASK_APP=teachmeumb.py
-      - FLASK_DEBUG=1
-      - MAIL_SERVER=mail
+      - FLASK_DEBUG=0  # Add this line (0 means off)
       - MAIL_PORT=1025
     networks:
       - app-network

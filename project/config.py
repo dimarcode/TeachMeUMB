@@ -13,3 +13,12 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     ADMINS = ['your-email@example.com']
     POSTS_PER_PAGE = 25
+
+    DEBUG = False
+    TESTING = False
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    
+class ProductionConfig(Config):
+    DEBUG = False
