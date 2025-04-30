@@ -60,8 +60,8 @@
               <div class="col-md-3 d-flex flex-column align-items-center gap-1">
                 {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
                     <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
-                {% elif appointment.status not in ['needs_review', 'completed'] %}
-                    {% if current_user.role == 'TUTOR' %}
+                {% elif appointment.status in ['confirmed'] %}
+                    {% if current_user.role == UserRole.TUTOR %}
                         <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
                     {% endif %}
                     <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
