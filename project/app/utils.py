@@ -1,6 +1,6 @@
 import os
 import secrets
-from pillow import Image
+from PIL import Image
 from app import app
 
 def save_picture(form_picture):
@@ -8,7 +8,13 @@ def save_picture(form_picture):
     random_hex = secrets.token_hex(16)
     _, f_ext = os.path.splitext(form_picture.filename)
     picture_filename = random_hex + f_ext
-    picture_path = os.path.join(app.root_path, 'static/profile_pics', picture_filename)
+    
+    # Ensure directory exists
+    picture_dir = os.path.join(app.root_path, 'static/profile_pictures')
+    if not os.path.exists(picture_dir):
+        os.makedirs(picture_dir)
+        
+    picture_path = os.path.join(picture_dir, picture_filename)
     
     # Resize image to save space and load time
     output_size = (150, 150)

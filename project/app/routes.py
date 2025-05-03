@@ -271,7 +271,7 @@ def user(username):
 def edit_profile():
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
-        if form.picture.data:
+        if form.profile_picture.data:
             picture_file = save_picture(form.picture.data)
             current_user.profile_picture = picture_file
         current_user.username = form.username.data
