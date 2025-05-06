@@ -17,6 +17,8 @@
         href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css' 
         rel='stylesheet'>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script 
         src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js" 
         integrity="sha512-odNmoc1XJy5x1TMVMdC7EMs3IVdItLPlCeL5vSUPN2llYKMJ2eByTTAIiiuqLg+GdNr9hF6z81p27DArRFKT7A==" 
@@ -44,6 +46,10 @@
         background-color: rgba(255, 255, 255, 0.35);
         font-weight: 600;
         border-radius: 0.25rem;
+    }
+
+    .navbar .profile-picture {
+        max-width: 32px;
     }
 
     /* calendar body */
@@ -112,7 +118,13 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="position-relative">
-                                <img src="{{ current_user.avatar(256) }}" class="rounded-circle" width="32" height="32" alt="User avatar">
+                                
+                                {% if current_user.profile_picture %}
+                                        <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="rounded profile-picture" alt="User avatar">
+                                    {% else %}
+                                        <img src="{{ current_user.avatar(256) }}" class="rounded" width="32" height="32" alt="User avatar">
+                                {% endif %}
+                                
                                 {% if current_user.unread_message_count() or current_user.unread_alert_count() %}
                                 <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
                                     <span class="visually-hidden">New alerts</span>

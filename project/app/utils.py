@@ -17,7 +17,7 @@ def save_picture(form_picture):
     picture_path = os.path.join(picture_dir, picture_filename)
     
     # Resize image to save space and load time
-    output_size = (150, 150)
+    output_size = (256, 256)
     i = Image.open(form_picture)
     i.thumbnail(output_size)
     

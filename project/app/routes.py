@@ -6,6 +6,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 from flask_moment import moment
 import sqlalchemy as sa
+import os
 from sqlalchemy import select
 from app import app, db, mail
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
@@ -121,9 +122,7 @@ def index():
         (Appointment.student_id == current_user.id) | (Appointment.tutor_id == current_user.id)
     ).all()
 
-
     # Other logic for appointments and requested subjects
-
 
     all_appointments = list(current_user.student_appointments) + list(current_user.tutor_appointments)
     pending_appointments = [appointment for appointment in all_appointments if appointment.status == 'pending']
@@ -271,9 +270,19 @@ def user(username):
 def edit_profile():
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
+        # Check if a new profile picture was uploaded
         if form.profile_picture.data:
-            picture_file = save_picture(form.profile_picture.data)
-            current_user.profile_picture = picture_file
+            # Remove old profile picture if it exists
+            if current_user.profile_picture:
+                old_path = os.path.join(
+                    app.root_path, 'static/profile_pictures', current_user.profile_picture
+                )
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            # Save new picture (implement save_picture to return the filename)
+            filename = save_picture(form.profile_picture.data)
+            current_user.profile_picture = filename
+
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
@@ -282,11 +291,23 @@ def edit_profile():
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
-        form.profile_picture.data = current_user.profile_picture
-    return render_template('edit_profile.html', title='Edit Profile',
-                           form=form)
+
+    return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 
+@app.route('/remove_profile_picture', methods=['POST'])
+@login_required
+def remove_profile_picture():
+    if current_user.profile_picture:
+        # Delete the file from disk if it exists
+        file_path = os.path.join(app.root_path, 'static/profile_pictures', current_user.profile_picture)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        # Remove from user model
+        current_user.profile_picture = None
+        db.session.commit()
+        flash('Profile picture removed.')
+    return redirect(url_for('edit_profile'))
 
 #######################
 # APPOINTMENTS SYSTEM #
