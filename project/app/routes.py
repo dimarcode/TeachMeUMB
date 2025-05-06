@@ -270,24 +270,29 @@ def user(username):
 def edit_profile():
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
-        # Check if a new profile picture was uploaded
+        old_filename = current_user.profile_picture
+
         if form.profile_picture.data:
-            # Remove old profile picture if it exists
-            if current_user.profile_picture:
-                old_path = os.path.join(
-                    app.root_path, 'static/profile_pictures', current_user.profile_picture
-                )
-                if os.path.exists(old_path):
-                    os.remove(old_path)
-            # Save new picture (implement save_picture to return the filename)
-            filename = save_picture(form.profile_picture.data)
-            current_user.profile_picture = filename
+            try:
+                # Use the old filename if it exists, otherwise generate a new one
+                if old_filename:
+                    filename = old_filename
+                else:
+                    filename = save_picture(form.profile_picture.data, return_filename_only=True)
+                
+                # Save the new picture, overwriting if necessary
+                save_picture(form.profile_picture.data, filename_override=filename)
+                current_user.profile_picture = filename
+            except Exception as e:
+                flash('There was an error saving your new profile picture.')
+                return redirect(url_for('edit_profile'))
 
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
         flash('Your changes have been saved.')
         return redirect(url_for('edit_profile'))
+
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
@@ -295,20 +300,21 @@ def edit_profile():
     return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 
+
 @app.route('/remove_profile_picture', methods=['POST'])
 @login_required
 def remove_profile_picture():
     if current_user.profile_picture:
-        # Delete the file from disk if it exists
         file_path = os.path.join(app.root_path, 'static/profile_pictures', current_user.profile_picture)
         if os.path.exists(file_path):
             os.remove(file_path)
-        # Remove from user model
         current_user.profile_picture = None
         db.session.commit()
         flash('Profile picture removed.')
     return redirect(url_for('edit_profile'))
 
+
+    
 #######################
 # APPOINTMENTS SYSTEM #
 #######################
@@ -1083,6 +1089,11 @@ def notifications():
     def to_datetime(ts):
         if isinstance(ts, float):
             return datetime.fromtimestamp(ts, timezone.utc)
+        if isinstance(ts, datetime):
+            # Make all datetimes timezone-aware (UTC)
+            if ts.tzinfo is None:
+                return ts.replace(tzinfo=timezone.utc)
+            return ts
         return ts
 
     combined.sort(key=lambda x: to_datetime(x['timestamp']))

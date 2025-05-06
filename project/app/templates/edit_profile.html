@@ -6,14 +6,15 @@
         <div class="col-md-4 text-center mb-4">
             {% if current_user.profile_picture %}
                 <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" alt="Profile Picture" class="img-thumbnail mb-2" width="150" id="currentProfilePic">
-                <form method="POST" action="{{ url_for('remove_profile_picture') }}" style="display:inline;">
+                <form id="remove-profile-form" method="POST" action="{{ url_for('remove_profile_picture') }}">
                     {{ form.hidden_tag() }}
                     <button type="submit" class="btn btn-danger btn-sm mt-2">Remove Profile Picture</button>
                 </form>
             {% endif %}
         </div>
+        
         <div class="col-md-8">
-            <form method="POST" enctype="multipart/form-data">
+            <form id="edit-profile-form" method="POST" enctype="multipart/form-data">
                 {{ form.hidden_tag() }}
                 <div class="form-group mb-3">
                     <label for="profile_picture">Profile Picture</label>
@@ -72,9 +73,18 @@ const preview = document.getElementById('cropper_preview');
 const cropperModal = document.getElementById('staticBackdrop');
 const openCropperModalBtn = document.getElementById('openCropperModalBtn');
 const cropImageBtn = document.getElementById('cropImageBtn');
+const form = document.getElementById('edit-profile-form');
 
 let imageReady = false;
 let imageDataUrl = null;
+
+// Prevent default form submission to ensure only cropped image is sent
+form.addEventListener('submit', function(e) {
+    if (cropper) {
+        e.preventDefault();
+        cropImageBtn.click();
+    }
+});
 
 input.addEventListener('change', function(e) {
     const file = e.target.files[0];
@@ -105,19 +115,13 @@ cropperModal.addEventListener('shown.bs.modal', function () {
 cropImageBtn.addEventListener('click', function() {
     if (cropper) {
         cropper.getCroppedCanvas().toBlob(function(blob) {
-            const form = document.querySelector('form');
-            const formData = new FormData(form);
-            formData.set('profile_picture', blob, 'profile_picture.png');
-            fetch(form.action, {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else {
-                    window.location.reload();
-                }
-            });
+            // Replace the file input with the cropped image
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(new File([blob], "profile_picture.png", {type: "image/png"}));
+            input.files = dataTransfer.files;
+
+            // Now submit the form normally (with the cropped image)
+            form.submit();
         }, 'image/png');
         var modal = bootstrap.Modal.getInstance(cropperModal);
         modal.hide();
