@@ -48,8 +48,9 @@
         border-radius: 0.25rem;
     }
 
-    .navbar .profile-picture {
+    .navbar .profile-picture, .default-avatar {
         max-width: 32px;
+        max-height: 32px;
     }
 
     /* calendar body */
@@ -87,7 +88,7 @@
     <nav class="navbar navbar-expand-lg bg-primary navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='assets/logo.jpg') }}" alt="TeachMeUMB Logo" height="40">
+                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="TeachMeUMB Logo" height="40">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
             data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" 
@@ -95,7 +96,9 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">
                             <i class="bi bi-house-door-fill"></i> Home
@@ -106,6 +109,7 @@
                             <i class="bi bi-search"></i> Explore
                         </a>
                     </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav mb-2 mb-lg-0">
                     {% if current_user.is_anonymous %}
@@ -114,26 +118,31 @@
                             <i class="bi bi-box-arrow-in-right"></i> Login
                         </a>
                     </li>
-                    {% else %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <li class="nav-item">
+                        <a class="nav-link" aria-current="page" href="{{ url_for('register') }}">
+                            <i class="bi bi-person-plus-fill"></i> Sign Up
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown d-none d-lg-block ms-lg-2">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                             <div class="position-relative">
-                                
                                 {% if current_user.profile_picture %}
-                                        <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="rounded profile-picture" alt="User avatar">
-                                    {% else %}
-                                        <img src="{{ current_user.avatar(256) }}" class="rounded" width="32" height="32" alt="User avatar">
+                                    <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="rounded profile-picture" alt="User avatar">
+                                {% else %}
+                                    <img src="{{ current_user.avatar(256) }}" class="rounded" width="32" height="32" alt="User avatar">
                                 {% endif %}
-                                
                                 {% if current_user.unread_message_count() or current_user.unread_alert_count() %}
-                                <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                                    <span class="visually-hidden">New alerts</span>
-                                </span>
+                                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                                        <span class="visually-hidden">New alerts</span>
+                                    </span>
                                 {% endif %}
                             </div>
                             <span class="d-none d-md-inline">
                                 {{ current_user.username.title() }}
                             </span>
+                            
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                             <li>
@@ -146,7 +155,7 @@
                                     <span><i class="bi bi-envelope"></i> Messages</span>
                                     {% set unread_message_count = current_user.unread_message_count() %}
                                     {% if unread_message_count %}
-                                        <span class="badge text-bg-danger ms-2">{{ unread_message_count }}</span>
+                                    <span class="badge text-bg-danger ms-2">{{ unread_message_count }}</span>
                                     {% endif %}
                                 </a>
                             </li>
@@ -155,18 +164,48 @@
                                     <span><i class="bi bi-bell"></i> Alerts</span>
                                     {% set unread_alert_count = current_user.unread_alert_count() %}
                                     {% if unread_alert_count %}
-                                        <span class="badge text-bg-danger ms-2">{{ unread_alert_count }}</span>
+                                    <span class="badge text-bg-danger ms-2">{{ unread_alert_count }}</span>
                                     {% endif %}
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <a class="dropdown-item" href="{{ url_for('logout') }}">
                                     <i class="bi bi-box-arrow-right"></i> Logout
                                 </a>
                             </li>
                         </ul>
-                    </li>
+                        </li>
+
+                        <!-- Mobile Links (visible below lg) -->
+                        <li class="nav-item d-block d-lg-none">
+                            <a class="nav-link" href="{{ url_for('user', username=current_user.username) }}">
+                                <i class="bi bi-person"></i> Profile
+                            </a>
+                        </li>
+                        <li class="nav-item d-block d-lg-none">
+                            <a class="nav-link d-flex justify-content-between align-items-center" href="{{ url_for('messages') }}">
+                                <span><i class="bi bi-envelope"></i> Messages</span>
+                                {% set unread_message_count = current_user.unread_message_count() %}
+                                {% if unread_message_count %}
+                                <span class="badge text-bg-danger ms-2">{{ unread_message_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item d-block d-lg-none">
+                            <a class="nav-link d-flex justify-content-between align-items-center" href="{{ url_for('messages') }}">
+                                <span><i class="bi bi-bell"></i> Alerts</span>
+                                {% set unread_alert_count = current_user.unread_alert_count() %}
+                                {% if unread_alert_count %}
+                                <span class="badge text-bg-danger ms-2">{{ unread_alert_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item d-block d-lg-none">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </li>
                     {% endif %}
                 </ul>
             </div>
