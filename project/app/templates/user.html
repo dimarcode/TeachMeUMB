@@ -2,8 +2,8 @@
 
 {% block content %}
 
-    
-    <div class="container mt-5">
+
+<div class="container mt-5">
     <div class="card shadow-lg">
         <div class="card-header bg-primary text-white text-center">
             <h2 class="mb-0">{{ user.username }}</h2>
@@ -11,17 +11,23 @@
         <div class="card-body">
             <div class="row g-4 align-items-center">
                 <div class="col-md-3 text-center">
+                    <div class="position-relative">
                     {% if user.profile_picture %}
-                            <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid rounded border mb-3 profile-picture" alt="{{ user.username }}'s profile picture" style="max-width: 180px;">
+                            <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid rounded border mb-3 large-profile-image" alt="{{ user.username }}'s profile picture" style="max-width: 180px;">
                         {% else %}
-                            <img src="{{ current_user.avatar(256) }}" class="rounded-circle profile-picture" alt="User avatar">
-                            {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR %}
-                        <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle">
+                            <img src="{{ current_user.avatar(256) }}" class="rounded large-profile-image" alt="User avatar">
+                    {% endif %}
+                    {% if current_user.is_authenticated and user.role == UserRole.TUTOR %}
+                        <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
+                            data-bs-toggle="popover"
+                            data-bs-trigger="hover"
+                            data-bs-content="This tutor has submitted work for verification.">
                             <i class="bi bi-check"></i>
                         </span>
                     {% endif %}
-                    {% endif %}
-                    
+                    </div>
+                </div>
+                <div>
                     {% if user.last_seen %}
                         <div class="mt-2">
                             <small class="text-muted">
@@ -59,51 +65,49 @@
         </div>
     </div>
 </div>
-    
-    
-        <div class="mt-5">
-            {% if user == current_user %}
-                <h4 class="fw-bold text-primary mb-3">Your Current Classes</h4>
-            {% elif user.role == UserRole.TUTOR %}
-                <h4 class="fw-bold text-success mb-3">{{ user.username }} is offering tutoring for the following classes:</h4>
-            {% elif user.role == UserRole.STUDENT %}
-                <h4 class="fw-bold text-success mb-3">{{ user.username }} is looking for tutoring in the following classes:</h4>
-            {% endif %}
+<div class="mt-5">
+    {% if user == current_user %}
+        <h4 class="fw-bold text-primary mb-3">Your Current Classes</h4>
+    {% elif user.role == UserRole.TUTOR %}
+        <h4 class="fw-bold text-success mb-3">{{ user.username }} is offering tutoring for the following classes:</h4>
+    {% elif user.role == UserRole.STUDENT %}
+        <h4 class="fw-bold text-success mb-3">{{ user.username }} is looking for tutoring in the following classes:</h4>
+    {% endif %}
 
-            {% if user.my_subjects %}
-                <ul class="list-group">
-                    {% for subject in user.my_subjects %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ subject.name }} - {{ subject.topic }}
-                            {% if current_user.is_authenticated and user == current_user %}
-                            <a href="{{ url_for('remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <div class="alert alert-info" role="alert">
-                    You haven't enrolled in any classes yet.
-                </div>
-            {% endif %}
+    {% if user.my_subjects %}
+        <ul class="list-group">
+            {% for subject in user.my_subjects %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="align-items0-center" ><strong>{{ subject.name }}</strong> - {{ subject.topic }}</div>
+                    {% if current_user.is_authenticated and user == current_user %}
+                    <a href="{{ url_for('remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            You haven't enrolled in any classes yet.
         </div>
-        <div class="mt-5">
-            {% if current_user.is_authenticated and user == current_user and current_user.role == UserRole.STUDENT %}
-            <!-- Requested Subjects Section -->
-            <div class="mt-4">
-            {% if requested_subjects %}
-                <h4 class="fw-bold text-primary mb-3">Your Requested Classes</h4>
-                
-                    <ul class="list-group">
-                        {% for subject in requested_subjects %}
-                            <li class="list-group-item">
-                                {{ subject.name }} - {{ subject.topic }}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
+    {% endif %}
+</div>
+<div class="mt-5">
+    {% if current_user.is_authenticated and user == current_user and current_user.role == UserRole.STUDENT %}
+    <!-- Requested Subjects Section -->
+    <div class="mt-4">
+    {% if requested_subjects %}
+        <h4 class="fw-bold text-primary mb-3">Your Requested Classes</h4>
+        
+            <ul class="list-group">
+                {% for subject in requested_subjects %}
+                    <li class="list-group-item">
+                        <div class="align-items0-center" ><strong>{{ subject.name }}</strong> - {{ subject.topic }}</div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     </div>
+    {% endif %}
+</div>
+
 {% endblock %}
