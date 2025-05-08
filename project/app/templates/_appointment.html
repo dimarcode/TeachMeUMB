@@ -60,7 +60,9 @@
               <!-- Location and Status -->
               <div class="col-md-3">
                 <div class="fw-semibold">Location</div>
-                {{ appointment.appointment_location.name }}<br>
+                <a href="{{ appointment.appointment_location.google_maps_link }}" target="_blank">
+                  {{ appointment.appointment_location.name }}
+                </a><br>
                 <span class="badge bg-secondary mt-1">{{ appointment.status }}</span>
               </div>
   

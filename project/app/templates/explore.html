@@ -7,20 +7,40 @@
     {% if current_user.role == UserRole.STUDENT %}
 
         <!-- Subject Filter Form -->
+        <!-- Subject Filter Form -->
         <form method="GET" action="{{ url_for('explore') }}">
+            <button class="btn btn-outline-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                Show Filters
+            </button>
             
-                <label><strong>Filter by Your Subjects</strong></label><br>
-                
-                    <div class="btn-group" role="group" aria-label="Subject selection">
+            <!-- Collapsible Filter Form -->
+            <div class="collapse" id="filterCollapse">
+                <div class="card card-body">
+                <form method="GET" action="{{ url_for('explore') }}">
+                    <!-- Subject Filter -->
+                    <label><strong>Filter by Your Subjects</strong></label><br>
+                    <div class="btn-group mb-3" role="group" aria-label="Subject selection">
                     {% for subject in current_user.my_subjects %}
-                        <input type="checkbox" class="btn-check" id="subject-{{ subject.id }}" name="subject_ids" value="{{ subject.id }}" autocomplete="off">
+                        <input type="checkbox" class="btn-check" id="subject-{{ subject.id }}" name="subject_ids" value="{{ subject.id }}"
+                        {% if subject.id|string in request.args.getlist('subject_ids') %} checked {% endif %} autocomplete="off">
                         <label class="btn btn-outline-primary" for="subject-{{ subject.id }}">{{ subject.name }}</label>
                     {% endfor %}
                     </div>
-                
             
-            <button type="submit" class="btn btn-primary">Filter</button>
-        </form>
+                    <!-- Date Picker -->
+                    <div class="form-floating mb-3">
+                    <input type="date" class="form-control" id="floatingDate" name="selected_date" placeholder="Select Date" value="{{ request.args.get('selected_date', '') }}">
+                    <label for="floatingDate"><strong>Select a Date</strong></label>
+                    </div>
+    
+                    <div class="d-flex justify-content-start">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{{ url_for('explore') }}" class="btn btn-outline-danger ms-2">Clear Filters</a>
+                    </div>
+                </form>
+                </div>
+            </div>  
+            </form>
 
         {% set selected_ids = request.args.getlist('subject_ids') | map('int') | list %}
         {% set selected_names = [] %}
@@ -92,8 +112,8 @@
     <!-- Tutor View -->
     <div class="container mt-5">
     <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Students Requesting Classes</h4>
+        <div class="card-header text-white">
+            <h4 class="mb-0 text-white">Students Requesting Classes</h4>
         </div>
         <div class="card-body">
             {% if requested_classes %}

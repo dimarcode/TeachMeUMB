@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, time, timedelta, date
 from urllib.parse import urlsplit
 from pytz import timezone as pytz_timezone
-from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask import render_template, flash, redirect, url_for, request, jsonify, session
 from flask_login import login_user, logout_user, current_user, login_required
 from flask_mail import Message
 from flask_moment import moment
@@ -153,7 +153,7 @@ def index():
     if not current_user.my_subjects:
         homepage_messages.append({
             'type': 'warning',
-            'link_text': 'Choose your classes you are taking this semester',
+            'link_text': 'Choose the classes you are taking this semester',
             'link_url': url_for('add_subject')
         })
 
@@ -276,8 +276,15 @@ def user(username):
 @login_required
 def edit_profile():
     form = EditProfileForm(current_user.username)
+    # Store the referrer when the form is first loaded
+    if request.method == 'GET':
+        # Store referrer in session, but don't use the edit_profile page itself as referrer
+        if request.referrer and 'edit_profile' not in request.referrer:
+            session['edit_profile_referrer'] = request.referrer
+            
     if form.validate_on_submit():
         old_filename = current_user.profile_picture
+        is_profile_pic_only = False  # Flag to check if only uploading picture
 
         if form.profile_picture.data:
             try:
@@ -290,15 +297,28 @@ def edit_profile():
                 # Save the new picture, overwriting if necessary
                 save_picture(form.profile_picture.data, filename_override=filename)
                 current_user.profile_picture = filename
+                
+                # Check if this is just a profile picture upload (not full form submit)
+                if 'crop_upload' in request.form:
+                    is_profile_pic_only = True
+                    db.session.commit()
+                    flash('Profile picture updated successfully.')
+                    # For picture-only updates, stay on the same page
+                    return redirect(url_for('edit_profile'))
+                
             except Exception as e:
                 flash('There was an error saving your new profile picture.')
                 return redirect(url_for('edit_profile'))
 
+        # Only run this code if it's a full form submit (Save Changes button)
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
         flash('Your changes have been saved.')
-        return redirect(url_for('edit_profile'))
+        
+        # Redirect to stored referrer or default to user profile
+        redirect_url = session.pop('edit_profile_referrer', None) or url_for('user', username=current_user.username)
+        return redirect(redirect_url)
 
     elif request.method == 'GET':
         form.username.data = current_user.username
@@ -335,6 +355,14 @@ def explore():
     if current_user.role == UserRole.STUDENT:
         # Get selected subject IDs from the checkbox form
         subject_ids = request.args.getlist('subject_ids', type=int)
+        selected_date_str = request.args.get('selected_date')
+        # Add this check to handle missing date
+        selected_date = None
+        if selected_date_str:
+            selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+        else:
+            # Default to today or handle missing date case
+            selected_date = datetime.now().date()
 
         if subject_ids:
             # Show tutors who teach any of the selected subjects
@@ -387,32 +415,56 @@ def explore():
 
             # ... inside your availability loop ...
             for availability in availabilities:
-                for week_offset in range(weeks_ahead):
-                    days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
-                    check_date = date.today() + timedelta(days=days_ahead)
+                if selected_date_str:
+                    try:
+                        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+                        if availability.day_of_week != selected_date.weekday():
+                            continue
 
-                    booked_appointments = Appointment.query.filter_by(
-                        tutor_id=tutor.id,
-                        booking_date=check_date
-                    ).with_entities(Appointment.booking_time).all()
+                        booked_appointments = Appointment.query.filter_by(
+                            tutor_id=tutor.id,
+                            booking_date=selected_date
+                        ).with_entities(Appointment.booking_time).all()
 
-                    tutor_debug['booked'].append({
-                        'date': check_date,
-                        'booked_times': [bt.booking_time for bt in booked_appointments]
-                    })
+                        tutor_debug['booked'].append({
+                            'date': selected_date,
+                            'booked_times': [bt.booking_time for bt in booked_appointments]
+                        })
 
-                    booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        slots = generate_slots(availability.start_time, availability.end_time)
 
-                    # Generate all slots for this availability
-                    slots = generate_slots(availability.start_time, availability.end_time)
-                    for slot in slots:
-                        if slot not in booked_times:
-                            has_open_slot = True
+                        for slot in slots:
+                            if slot not in booked_times:
+                                has_open_slot = True
+                                break
+                    except ValueError:
+                        flash("Invalid date format", "danger")
+                else:
+                    for week_offset in range(weeks_ahead):
+                        days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
+                        check_date = date.today() + timedelta(days=days_ahead)
+
+                        booked_appointments = Appointment.query.filter_by(
+                            tutor_id=tutor.id,
+                            booking_date=check_date
+                        ).with_entities(Appointment.booking_time).all()
+
+                        tutor_debug['booked'].append({
+                            'date': check_date,
+                            'booked_times': [bt.booking_time for bt in booked_appointments]
+                        })
+
+                        booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        slots = generate_slots(availability.start_time, availability.end_time)
+
+                        for slot in slots:
+                            if slot not in booked_times:
+                                has_open_slot = True
+                                break
+                        if has_open_slot:
                             break
-                    if has_open_slot:
-                        break
-                if has_open_slot:
-                    break
+
 
             if has_open_slot:
                 filtered_tutors.append(tutor)
@@ -1175,6 +1227,9 @@ def test_availability():
     return render_template('test_availability.html', form=form, availabilities=availabilities, available_times=available_times, unavailable_times=unavailable_times)
 
 
+@app.route('/faq')
+def faq():
+    return render_template('faq.html', title='FAQs')
 
 # @app.context_processor
 # def inject_user_role():

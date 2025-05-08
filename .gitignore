@@ -2,8 +2,9 @@
 ###############
 
 
-!project/app/static/profile_pictures/.gitkeep
-project/app/static/profile_pictures/*
+tests.py
+
+/project/app/__init__.py
 *.py[cod]
 .vscode
 # C extensions

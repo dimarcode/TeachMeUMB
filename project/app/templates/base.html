@@ -32,8 +32,16 @@
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/moment@6.1.17/index.global.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/moment-timezone@6.1.17/index.global.min.js'></script>
 <style>
+
     body {
-        padding-bottom: 56px;
+        padding-bottom: 60px;
+        padding-top: 60px
+    }
+
+/* --- navbar --- */
+
+    .navbar, .card-header {
+        background-color: #005a8b;
     }
 
     /*navbar hover */
@@ -44,8 +52,44 @@
 
     .navbar .nav-link.active {
         background-color: rgba(255, 255, 255, 0.35);
-        font-weight: 600;
         border-radius: 0.25rem;
+    }
+
+    .navbar .dropdown-item:hover {
+        background-color: #005a8b;
+        color: white;
+    }
+
+    .navbar .text-bg-danger:hover {
+        background-color: #9e2632 !important;
+    }
+
+    h4 {
+        color: #005a8b;
+    }
+
+    .card-header h4 {
+        color: white;
+    }
+
+    .card-title a {
+        color: #8dc9e9;
+    }
+
+    .card-header {
+        color: white;
+        background-color: #005a8b;
+
+    }   
+
+    .btn-primary {
+    
+        background-color: #005a8b;
+        border-color: #005a8b;
+    }
+    
+    .btn-primary:hover {
+        background-color: #00466e;
     }
 
     .small-profile-image {
@@ -90,15 +134,18 @@
         .calendar-header th {
             padding: 0 !important;
         }
+
     }
+    
+    
 
 </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg bg-primary navbar-dark">
+    <nav class="navbar navbar-default navbar-expand-lg fixed-top navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="TeachMeUMB Logo" height="40">
+                <img src="{{ url_for('static', filename='assets/logo_white.png') }}" alt="TeachMeUMB Logo" height="40">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
             data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" 
@@ -110,17 +157,20 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if current_user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">
+                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
                             <i class="bi bi-house-door-fill"></i> Home
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" aria-current="page" href="{{ url_for('explore') }}">
-                            <i class="bi bi-search"></i> Explore
+                        <a class="nav-link {% if request.endpoint == 'explore' %}active{% endif %}" href="{{ url_for('explore') }}">
+                        <i class="bi bi-search"></i> Explore
                         </a>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
                     {% endif %}
+
                 </ul>
+                
                 <ul class="navbar-nav mb-2 mb-lg-0">
                     {% if current_user.is_anonymous %}
                     <li class="nav-item">
@@ -295,6 +345,12 @@
       document.addEventListener('DOMContentLoaded', initialize_notifications);
       {% endif %}
     </script>
+    <footer style="background-color: #005a8b; height: 50px;" class="text-white text-center fixed-bottom d-flex align-items-center">
+        <div class="container d-flex justify-content-center gap-4">
+          <a href="mailto:TeachMeUMB@outlook.com" class="text-white text-decoration-underline">Contact Us</a>
+          <a href="{{ url_for('faq') }}" class="text-white text-decoration-underline">FAQs</a>
+        </div>
+    </footer>
 </body>
 </html>
 

@@ -5,7 +5,7 @@
 
 <div class="container mt-5">
     <div class="card shadow-lg">
-        <div class="card-header bg-primary text-white text-center">
+        <div class="card-header text-white text-center">
             <h2 class="mb-0">{{ user.username }}</h2>
         </div>
         <div class="card-body">
@@ -91,7 +91,7 @@
 </div>
 <div class="mt-5">
     {% if user == current_user %}
-        <h4 class="fw-bold text-primary mb-3">Your Current Classes</h4>
+        <h4 class="fw-bold mb-3">Your Current Classes</h4>
     {% elif user.role == UserRole.TUTOR %}
         <h4 class="fw-bold text-success mb-3">{{ user.username }} is offering tutoring for the following classes:</h4>
     {% elif user.role == UserRole.STUDENT %}
@@ -133,5 +133,6 @@
     </div>
     {% endif %}
 </div>
+
 
 {% endblock %}
