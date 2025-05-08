@@ -6,7 +6,7 @@
 <div class="container mt-5">
     <div class="card shadow-lg">
         <div class="card-header bg-primary text-white text-center">
-            <h2 class="mb-0">{{ user.username }}</h2>
+            <h2 class="mb-0">{{ user.username }} </h2>
         </div>
         <div class="card-body">
             <div class="row g-4 align-items-start">
@@ -35,8 +35,8 @@
                                     <p class="lead text-muted">{{ user.about_me }}</p>
                                 {% endif %}
                             </li>
-                            <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
-                            <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
+                            <li class="list-group-item"><strong>Email:</strong> {{ user.email }} </li>
+                            <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }} </li>
                             <li class="list-group-item"><strong>Role:</strong> {% if user.role == UserRole.TUTOR %} Tutor {% else %} Student {% endif %} </li>
                                 {% if user.last_seen %}
                                     <li class="list-group-item">

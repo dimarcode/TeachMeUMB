@@ -28,7 +28,7 @@ langdetect
 Mako
 MarkupSafe
 packaging
-pillow
+Pillow
 PyJWT
 python-dotenv
 pytz
