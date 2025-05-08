@@ -28,7 +28,11 @@
                     <div>
                         <a href="{{ url_for('user', username=appointment.student.username) }}" class="fw-bold">{{ appointment.student.username }}</a>
                     </div>
-                    <img src="{{ appointment.student.avatar(40) }}" class="rounded-circle border mb-1" alt="Student avatar">
+                    {% if appointment.student.profile_picture %}
+                        <img src="{{ url_for('static', filename='profile_pictures/' + appointment.student.profile_picture) }}" class="rounded smedium-profile-image" alt="User avatar">
+                    {% else %}
+                        <img src="{{ appointment.student.avatar(256) }}" class="rounded smedium-profile-image" alt="User avatar">
+                    {% endif %}
                     <div class="small text-muted">Student</div>
                     
                     
@@ -36,7 +40,11 @@
                     <div>
                         <a href="{{ url_for('user', username=appointment.tutor.username) }}" class="fw-bold">{{ appointment.tutor.username }}</a>
                     </div>
-                    <img src="{{ appointment.tutor.avatar(40) }}" class="rounded-circle border mb-1" alt="Tutor avatar">
+                    {% if appointment.tutor.profile_picture %}
+                        <img src="{{ url_for('static', filename='profile_pictures/' + appointment.tutor.profile_picture) }}" class="rounded smedium-profile-image" alt="User avatar">
+                    {% else %}
+                        <img src="{{ appointment.tutor.avatar(256) }}" class="rounded smedium-profile-image" alt="User avatar">
+                    {% endif %}
                     
                     <div class="small text-muted">Tutor</div>
                 {% endif %}
