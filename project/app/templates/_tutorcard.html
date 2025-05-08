@@ -1,26 +1,20 @@
-    <div class="card-header">
-        <div>
-            
-            <h3 class="card-title mb-0">
-            {% if tutor.profile_picture %}
-                <img src="{{ url_for('static', filename='profile_pictures/' + tutor.profile_picture) }}" class="img-thumbnail mb-0 smedium-profile-image" alt="User avatar">
-            {% else %}
-                <img src="{{ tutor.avatar(256) }}" class="img-thumbnail mb-0 smedium-profile-image" alt="User avatar">
+<div class="card-header">
+    <div>
+        <h3 class="card-title mb-0"><img src="{{ tutor.avatar(36) }}" class="rounded-circle me-3" alt="Profile Picture">
+            <a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a>
+        </h3>
+    </div>
+</div>
+<div class="card-body">
+    <p><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
+<p><strong>Email:</strong> {{ tutor.email }}</p>
+    <p class="card-text">
+        <strong>Shared subjects with {{ tutor.username }}:</strong><br>
+        {% for subject in tutor.my_subjects %}
+            {% if subject in current_user.my_subjects %}
+            <span class="badge bg-primary">{{ subject.name }}<br></span>
             {% endif %}
-                <a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a>
-            </h3>
-        </div>
-    </div>
-    <div class="card-body">
-        <p><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
-    <p><strong>Email:</strong> {{ tutor.email }}</p>
-        <p class="card-text">
-            <strong>Shared subjects with {{ tutor.username }}:</strong><br>
-            {% for subject in tutor.my_subjects %}
-                {% if subject in current_user.my_subjects %}
-                <span class="badge bg-primary">{{ subject.name }}<br></span>
-                {% endif %}
-            {% endfor %}
-        </p>
-        <!-- Form for booking appointment --> 
-    </div>
+        {% endfor %}
+    </p>
+    <!-- Form for booking appointment --> 
+</div>
