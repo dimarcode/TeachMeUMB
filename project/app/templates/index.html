@@ -3,9 +3,6 @@
 {% block content %}
 
 <h1>Hi, {{ current_user.username }}!</h1>
-
-    
-
     {% if homepage_messages %}
     <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
         <span class="me-2">
@@ -63,6 +60,81 @@
         {% endfor %}
     </div>
     {% endif %}
+    {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
+        <!-- Pending Appointments That Need Your Approval -->
+        <div class="mt-5">
+            {% if pending_needs_approval %}
+                <h3>Appointments Waiting for Your Approval</h3>
+                    {% for appointment in pending_needs_approval %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Pending Appointments Waiting for Student/Tutor Approval -->
+        <div class="mt-5">
+            {% if pending_waiting_for_other %}
+                {% if current_user.role == UserRole.TUTOR %}
+                    <h3>Appointments Waiting for the Student's Approval</h3>
+                {% else %}
+                    <h3>Appointments Waiting for the Tutor's Approval</h3>
+                {% endif %}
+                    {% for appointment in pending_waiting_for_other %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if confirmed_appointments %}
+                <h3>Your Confirmed Appointments</h3>
+                    {% for appointment in confirmed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if completed_appointments %}
+                <h3>Your Completed Appointments</h3>
+                    {% for appointment in completed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+    {% endif %}
+    {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT %}
+    <!-- Requested Subjects Section -->
+    <div class="mt-4">
+    {% if requested_subjects %}
+        <h4 class="fw-bold text-primary mb-3">Your Requested Classes</h4>
+        
+            <ul class="list-group">
+                {% for subject in requested_subjects %}
+                    <li class="list-group-item">
+                        {{ subject.name }} - {{ subject.topic }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+     <!-- Custom Modal -->
+        <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Custom modal
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                Custom footer
+            </div>
+            </div>
+        </div>
+        </div>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -129,69 +201,4 @@
                 });
         });
     </script>
-    
-    
-    
-
-    {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
-        <!-- Pending Appointments That Need Your Approval -->
-        <div class="mt-5">
-            {% if pending_needs_approval %}
-                <h3>Appointments Waiting for Your Approval</h3>
-                    {% for appointment in pending_needs_approval %}
-                        {% include '_appointment.html' with context %}
-                    {% endfor %}
-            {% endif %}
-        </div>
-
-         <!-- Custom Modal -->
-        <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalTitle">Event Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                Custom modal
-            </div>
-            <div class="modal-footer" id="modalFooter">
-                Custom footer
-            </div>
-            </div>
-        </div>
-        </div>
-
-        <!-- Pending Appointments Waiting for Student/Tutor Approval -->
-        <div class="mt-5">
-            {% if pending_waiting_for_other %}
-                {% if current_user.role == UserRole.TUTOR %}
-                    <h3>Appointments Waiting for the Student's Approval</h3>
-                {% else %}
-                    <h3>Appointments Waiting for the Tutor's Approval</h3>
-                {% endif %}
-                    {% for appointment in pending_waiting_for_other %}
-                        {% include '_appointment.html' with context %}
-                    {% endfor %}
-            {% endif %}
-        </div>
-        <!-- Confirmed Appointments Section -->
-        <div class="mt-5">
-            {% if confirmed_appointments %}
-                <h3>Your Confirmed Appointments</h3>
-                    {% for appointment in confirmed_appointments %}
-                        {% include '_appointment.html' with context %}
-                    {% endfor %}
-            {% endif %}
-        </div>
-        <!-- Confirmed Appointments Section -->
-        <div class="mt-5">
-            {% if completed_appointments %}
-                <h3>Your Completed Appointments</h3>
-                    {% for appointment in completed_appointments %}
-                        {% include '_appointment.html' with context %}
-                    {% endfor %}
-            {% endif %}
-        </div>
-    {% endif %}
 {% endblock %}

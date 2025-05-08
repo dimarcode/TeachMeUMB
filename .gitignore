@@ -1,6 +1,9 @@
 # Directories #
 ###############
 
+
+!project/app/static/profile_pictures/.gitkeep
+project/app/static/profile_pictures/*
 *.py[cod]
 .vscode
 # C extensions
