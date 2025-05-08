@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+        <h1 class="mb-4 text-center" style="color: #005a8b; font-weight: 600;">
+        Frequently Asked Questions
+      </h1>
+      
+  <div class="accordion" id="faqAccordion">
+
+    {% set faqs = [
+        ("Who can use TeachMeUMB?", "All UMass Boston students are welcome to use the platform for finding or offering tutoring."),
+        ("How do I find a tutor?", "Use the 'Explore' page to browse tutors by subject and availability. You can filter results to match your class needs."),
+        ("What if I need help with a subject not listed?", "You can request a class on the 'Request Class' page."),
+      
+        ("Can anyone become a tutor?", "Only UMass Boston students with a strong background in specific subjects, or Professors can apply. Tutors are reviewed before approval."),
+        ("How do I know if a tutor is qualified?", "Each tutor lists the subjects they’re approved for. They also upload past work or list experience to show why they’re a good fit."),
+        ("How do tutors set their availability?", "Tutors log into their dashboard and set weekly availability by selecting days and time ranges."),
+      
+        ("Can I message a tutor before booking?", "Yes. You can message tutors before booking to ask questions or discuss topics."),
+        ("Can I book recurring sessions?", "Yes. If your tutor has open slots, you can book multiple sessions in advance."),
+        ("How do I cancel or reschedule?", "Manage your bookings on your appointments page. Please give at least 24 hours' notice."),
+      
+        ("Can I leave feedback for my tutor?", "Yes. After each session, you can leave review your session."),
+        ("How do I share feedback?", "Use the 'Contact Us' email in the footer to share questions, suggestions, or issues."),
+        ("How do I contact support?", "You can reach out via the 'Contact Us' page or email us directly at TeachMeUMB@outlook.com."),
+      
+        ("Does TeachMeUMB work on mobile?", "Yes! The platform is mobile-friendly and works well on phones and tablets.")
+      ] %}      
+
+    {% for question, answer in faqs %}
+      {% set idx = loop.index0 %}
+      <div class="accordion-item border rounded mb-3">
+        <h2 class="accordion-header" id="heading{{ idx }}">
+          <button class="accordion-button collapsed fw-semibold" type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ idx }}"
+                  aria-expanded="false"
+                  aria-controls="collapse{{ idx }}"
+                  style="background-color: #f0f8ff; color: #005a8b;">
+            {{ question }}
+          </button>
+        </h2>
+        <div id="collapse{{ idx }}" class="accordion-collapse collapse"
+             aria-labelledby="heading{{ idx }}" data-bs-parent="#faqAccordion">
+          <div class="accordion-body text-secondary" style="background-color: #ffffff;">
+            {{ answer }}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock %}

@@ -3,18 +3,18 @@
       <div class="card shadow-sm mb-3 border-light">
         
         <!-- Clickable Header with Location and Hint -->
-        <div class="card-header d-flex justify-content-between align-items-center"
+        <div class="card-header d-flex justify-content-between align-items-center appointment-header"
              data-bs-toggle="collapse"
              data-bs-target="#details{{ appointment.id }}"
              role="button"
              style="cursor: pointer;">
-          <div>
+          <div class="appointment-header-text">
             <strong>#{{ appointment.id }}</strong> – {{ appointment.subject.name }}  
-            <span class="text-muted">
+            <span>
               ({{ appointment.booking_date.strftime('%b %d') }} at {{ moment(appointment.booking_time).format('LT') }} @ {{ appointment.appointment_location.name }})
             </span>
           </div>
-          <div class="text-muted small d-none d-md-block"><em>Click to view details</em></div>
+          <div class="view-details-text small d-none d-md-block"><em>Click to view details <i class="bi bi-arrows-expand"></i></em></div>
         </div>
   
         <!-- Collapsible Details -->
@@ -28,11 +28,7 @@
                     <div>
                         <a href="{{ url_for('user', username=appointment.student.username) }}" class="fw-bold">{{ appointment.student.username }}</a>
                     </div>
-                    {% if appointment.student.profile_picture %}
-                        <img src="{{ url_for('static', filename='profile_pictures/' + appointment.student.profile_picture) }}" class="rounded smedium-profile-image" alt="User avatar">
-                    {% else %}
-                        <img src="{{ appointment.student.avatar(256) }}" class="rounded smedium-profile-image" alt="User avatar">
-                    {% endif %}
+                    <img src="{{ appointment.student.avatar(40) }}" class="rounded-circle border mb-1" alt="Student avatar">
                     <div class="small text-muted">Student</div>
                     
                     
@@ -40,11 +36,7 @@
                     <div>
                         <a href="{{ url_for('user', username=appointment.tutor.username) }}" class="fw-bold">{{ appointment.tutor.username }}</a>
                     </div>
-                    {% if appointment.tutor.profile_picture %}
-                        <img src="{{ url_for('static', filename='profile_pictures/' + appointment.tutor.profile_picture) }}" class="rounded smedium-profile-image" alt="User avatar">
-                    {% else %}
-                        <img src="{{ appointment.tutor.avatar(256) }}" class="rounded smedium-profile-image" alt="User avatar">
-                    {% endif %}
+                    <img src="{{ appointment.tutor.avatar(40) }}" class="rounded-circle border mb-1" alt="Tutor avatar">
                     
                     <div class="small text-muted">Tutor</div>
                 {% endif %}
@@ -60,7 +52,9 @@
               <!-- Location and Status -->
               <div class="col-md-3">
                 <div class="fw-semibold">Location</div>
-                {{ appointment.appointment_location.name }}<br>
+                <a href="{{ appointment.appointment_location.google_maps_link }}" target="_blank">
+                  {{ appointment.appointment_location.name }}
+                </a><br>
                 <span class="badge bg-secondary mt-1">{{ appointment.status }}</span>
               </div>
   
@@ -68,8 +62,8 @@
               <div class="col-md-3 d-flex flex-column align-items-center gap-1">
                 {% if appointment.status in ['needs_review', 'completed'] and not appointment.review_by(current_user) %}
                     <a href="{{ url_for('review_appointment', appointment_id=appointment.id) }}" class="btn btn-warning btn-sm w-100">Review</a>
-                {% elif appointment.status in ['confirmed'] %}
-                    {% if current_user.role == UserRole.TUTOR %}
+                {% elif appointment.status not in ['needs_review', 'completed'] %}
+                    {% if current_user.role == 'TUTOR' %}
                         <a href="{{ url_for('begin_appointment', appointment_id=appointment.id) }}" class="btn btn-success btn-sm w-100">Begin</a>
                     {% endif %}
                     <a href="{{ url_for('appointment_update', appointment_id=appointment.id, tutor_id=appointment.tutor.id) }}" class="btn btn-primary btn-sm w-100">Update</a>     
