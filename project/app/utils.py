@@ -1,6 +1,5 @@
 import uuid
 import os
-from PIL import Image
 from app import app
 
 def save_picture(form_picture, filename_override=None, return_filename_only=False):
