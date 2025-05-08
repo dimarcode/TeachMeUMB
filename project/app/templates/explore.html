@@ -46,13 +46,37 @@
                     <div class="col-md-4 mb-4">
                         <div class="card h-100">
                             {% include '_tutorcard.html' %}
+                            {% if not current_user.profile_picture %}  
                             <div class="card-footer">
-                            <form action="{{ url_for('book_appointment') }}" method="post">
-                                {{ form.hidden_tag() }}  <!-- Include CSRF token -->
-                                <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
-                                <a href="{{ url_for('book_appointment', tutor_id=tutor.id) }}" class="btn btn-primary">Book Appointment</a>
-                            </form>
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+                                    Book Appointment
+                                </button>
+                                <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5" id="staticBackdropLabel">Profile Picture</h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        In order to book an appointment, please <a href="{{ url_for('edit_profile') }}">set a profile picture</a>. This helps tutors identify you.                                  </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
                             </div>
+                            {% else %}
+                            <div class="card-footer">
+                                <form action="{{ url_for('book_appointment') }}" method="post">
+                                    {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                                    <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+                                    <a href="{{ url_for('book_appointment', tutor_id=tutor.id) }}" class="btn btn-primary">Book Appointment</a>
+                                </form>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
@@ -113,7 +137,7 @@
         </div>
     </div>
 </div>
-    {% endif %}
+{% endif %}
 {% if debug_info %}
 <div class="alert alert-warning mt-4">
     <h5>Debug: Tutors filtered out</h5>

@@ -143,10 +143,17 @@ def index():
     # Homepage message if student has no subjects or tutor has no availability
     homepage_messages = []
 
-    if current_user.role == UserRole.STUDENT and not current_user.my_subjects:
+    if not current_user.profile_picture:
         homepage_messages.append({
             'type': 'warning',
-            'link_text': 'Choose the classes you are taking this semester',
+            'link_text': 'Add a profile picture',
+            'link_url': url_for('edit_profile')
+        })
+
+    if not current_user.my_subjects:
+        homepage_messages.append({
+            'type': 'warning',
+            'link_text': 'Choose your classes you are taking this semester',
             'link_url': url_for('add_subject')
         })
 
@@ -297,7 +304,7 @@ def edit_profile():
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
 
-    return render_template('edit_profile.html', title='Edit Profile', form=form)
+    return render_template('edit_profile.html', title='Edit Profile', form=form, UserRole=UserRole)
 
 
 

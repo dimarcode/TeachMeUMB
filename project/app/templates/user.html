@@ -9,43 +9,45 @@
             <h2 class="mb-0">{{ user.username }}</h2>
         </div>
         <div class="card-body">
-            <div class="row g-4 align-items-center">
-                <div class="col-md-3 text-center">
-                    <div class="position-relative">
-                    {% if user.profile_picture %}
-                            <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid rounded border mb-3 large-profile-image" alt="{{ user.username }}'s profile picture" style="max-width: 180px;">
+            <div class="row g-4 align-items-start">
+                <div class="col-md-3 text-center align-items-top">
+                    <div class="position-relative mb-3">
+                        {% if user.profile_picture %}
+                            <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="{{ user.username }}'s profile picture" style="max-width: 180px;">
                         {% else %}
-                            <img src="{{ current_user.avatar(256) }}" class="rounded large-profile-image" alt="User avatar">
-                    {% endif %}
-                    {% if current_user.is_authenticated and user.role == UserRole.TUTOR %}
-                        <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
-                            data-bs-toggle="popover"
-                            data-bs-trigger="hover"
-                            data-bs-content="This tutor has submitted work for verification.">
-                            <i class="bi bi-check"></i>
-                        </span>
-                    {% endif %}
+                            <img src="{{ current_user.avatar(256) }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="User avatar">
+                        {% endif %}
+                        {% if current_user.is_authenticated and user.role == UserRole.TUTOR %}
+                            <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="hover"
+                                data-bs-content="This tutor has submitted work for verification.">
+                                <i class="bi bi-check"></i>
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
-                <div>
-                    {% if user.last_seen %}
-                        <div class="mt-2">
-                            <small class="text-muted">
-                                <strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}
-                            </small>
-                        </div>
-                    {% endif %}
-                </div>
                 <div class="col-md-9">
-                    {% if user.about_me %}
-                        <p class="lead text-muted">{{ user.about_me }}</p>
-                    {% endif %}
-                    <ul class="list-group list-group-flush mb-3">
-                        <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
-                        <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
-                        <li class="list-group-item"><strong>Role:</strong> {{ user.role.value }}</li>
-                    </ul>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
+                    <div class="row">
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item lead text-muted">
+                                {% if user.about_me %}
+                                    <p class="lead text-muted">{{ user.about_me }}</p>
+                                {% endif %}
+                            </li>
+                            <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
+                            <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
+                            <li class="list-group-item"><strong>Role:</strong> {% if user.role == UserRole.TUTOR %} Tutor {% else %} Student {% endif %} </li>
+                                {% if user.last_seen %}
+                                    <li class="list-group-item">
+                                        <small class="text-muted">
+                                            <strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}
+                                        </small>
+                                    </li>
+                                {% endif %}
+                        </ul>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
                         {% if user == current_user %}
                             <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
                             <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
@@ -57,7 +59,29 @@
                             <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username }} A Message</a>
                         {% endif %}
                         {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_user and user.role == UserRole.TUTOR %}
+                            {% if not current_user.profile_picture %}  
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+                                    Book Appointment
+                                </button>
+                                <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5" id="staticBackdropLabel">Profile Picture</h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        In order to book an appointment, please <a href="{{ url_for('edit_profile') }}">set a profile picture</a>. This helps tutors identify you.                                  </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+                            {% else %}
                             <a href="{{ url_for('book_appointment', tutor_id=user.id) }}" class="btn btn-outline-primary btn-sm">Book Appointment</a>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

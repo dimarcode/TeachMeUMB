@@ -139,9 +139,9 @@
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                             <div class="position-relative">
                                 {% if current_user.profile_picture %}
-                                    <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="rounded small-profile-image" alt="User avatar">
+                                    <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="img-thumbnail mb-0 small-profile-image" alt="User avatar">
                                 {% else %}
-                                    <img src="{{ current_user.avatar(256) }}" class="rounded small-profile-image" alt="User avatar">
+                                    <img src="{{ current_user.avatar(256) }}" class="img-thumbnail mb-0 small-profile-image" width="40" alt="User avatar">
                                 {% endif %}
                                 {% if current_user.unread_message_count() or current_user.unread_alert_count() %}
                                     <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
@@ -243,8 +243,32 @@
         const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
     </script>
     <script>
-        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
-        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl))
+        const myModal = document.getElementById('myModal')
+        const myInput = document.getElementById('myInput')
+
+        myModal.addEventListener('shown.bs.modal', () => {
+        myInput.focus()
+        })
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var popoverTarget = document.getElementById('popoverTarget');
+            var popover = new bootstrap.Popover(popoverTarget);
+
+            document.getElementById('showPopoverBtn').addEventListener('click', function() {
+                popover.show();
+
+                // Wait for popover to be in DOM, then add close handler
+                setTimeout(function() {
+                    var closeBtn = document.getElementById('closePopoverBtn');
+                    if (closeBtn) {
+                        closeBtn.onclick = function() {
+                            popover.hide();
+                        };
+                    }
+                }, 100);
+            });
+        });
     </script>
     
     {{ moment.include_moment() }}
