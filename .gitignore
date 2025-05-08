@@ -3,8 +3,9 @@
 
 
 tests.py
-/project/app/static/profile_pictures/.gitkeep
 /project/app/static/profile_pictures/*
+!/project/app/static/profile_pictures/.gitkeep
+
 /project/app/__init__.py
 *.py[cod]
 .vscode
