@@ -1,11 +1,10 @@
 import uuid
 import os
-from PIL import Image
 from app import app
 
 def save_picture(form_picture, filename_override=None, return_filename_only=False):
-    import secrets, os
-    from PIL import Image
+    import secrets, os, app
+    from pillow import Image
 
     if filename_override:
         picture_fn = filename_override
