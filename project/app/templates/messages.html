@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+
+            <h1 class="mb-4"><i class="bi bi-bell"></i> Alerts</h1>
+            {% if active_alerts %}
+                <ul class="list-group mb-4">
+                    {% for alert in active_alerts %}
+                        {% include '_alert.html' with context %}
+                    {% endfor %}
+                </ul>
+            {% elif not archived_alerts %}
+                <div class="alert alert-info">No alerts to display.</div>
+            {% endif %}
+
+            <h1 class="mb-4"><i class="bi bi-envelope"></i> Messages</h1>
+            {% if messages %}
+                <div class="mb-4">
+                    {% for post in messages %}
+                        {% include '_post.html' with context %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">No messages to display.</div>
+            {% endif %}
+
+            {% if archived_alerts %}
+                <h3 class="mt-5 mb-3"><i class="bi bi-archive"></i> Archived Alerts</h3>
+                <ul class="list-group mb-4">
+                    {% for alert in archived_alerts %}
+                        {% include '_alert.html' with context %}
+                    {% endfor %}
+                </ul>
+            {% elif not archived_alerts %}
+                <div class="alert alert-secondary">No archived alerts to display.</div>
+            {% endif %}
+    <nav aria-label="...">
+        <ul class="pager pagination justify-content-center">
+            <li class="previous{% if not prev_url %} disabled{% endif %}">
+                <a class="page-link" href="{{ prev_url or '#' }}">
+                    <span aria-hidden="true">&larr;</span>Newer Messages
+                </a>
+            </li>
+            <li class="next{% if not next_url %} disabled{% endif %}">
+                <a class="page-link" href="{{ next_url or '#' }}">
+                    Older Messages <span aria-hidden="true">&rarr;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+    </div>
+</div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Loop through all alerts and format their timestamps
+        document.querySelectorAll('[data-timestamp]').forEach(function (element) {
+            const rawTimestamp = element.getAttribute('data-timestamp');
+            const formattedTime = moment(rawTimestamp).format('MMMM Do YYYY, h:mm A'); // Example format
+            const timestampElement = document.getElementById('formatted-timestamp-' + element.id.split('-')[2]);
+            if (timestampElement) {
+                timestampElement.textContent = `(${formattedTime})`;
+            }
+        });
+    });
+    </script>
+{% endblock %}

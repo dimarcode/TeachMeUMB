@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Calendar -->
+<!-- Student View -->    
+    {% if current_user.role == UserRole.STUDENT %}
+
+
+        <!-- Subject Filter Form -->
+        <form method="GET" action="{{ url_for('explore') }}">
+            <button class="btn btn-outline-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                Show Filters
+            </button>
+            
+            <!-- Collapsible Filter Form -->
+            <div class="collapse" id="filterCollapse">
+                <div class="card card-body">
+                <form method="GET" action="{{ url_for('explore') }}">
+                    <!-- Subject Filter -->
+                    <label><strong>Filter by Your Subjects</strong></label><br>
+                    <div class="btn-group mb-3" role="group" aria-label="Subject selection">
+                    {% for subject in current_user.my_subjects %}
+                        <input type="checkbox" class="btn-check" id="subject-{{ subject.id }}" name="subject_ids" value="{{ subject.id }}"
+                        {% if subject.id|string in request.args.getlist('subject_ids') %} checked {% endif %} autocomplete="off">
+                        <label class="btn btn-outline-primary" for="subject-{{ subject.id }}">{{ subject.name }}</label>
+                    {% endfor %}
+                    </div>
+            
+                    <!-- Date Picker -->
+                    <div class="form-floating mb-3">
+                    <input type="date" class="form-control" id="floatingDate" name="selected_date" placeholder="Select Date" value="{{ request.args.get('selected_date', '') }}">
+                    <label for="floatingDate"><strong>Select a Date</strong></label>
+                    </div>
+    
+                    <div class="d-flex justify-content-start">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{{ url_for('explore') }}" class="btn btn-outline-danger ms-2">Clear Filters</a>
+                    </div>
+                </form>
+                </div>
+            </div>  
+            </form>
+
+        {% set selected_ids = request.args.getlist('subject_ids') | map('int') | list %}
+        {% set selected_names = [] %}
+
+        {% for subject in current_user.my_subjects %}
+            {% if subject.id in selected_ids %}
+                {% set _ = selected_names.append(subject.name) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if selected_names %}
+            <p class="mt-2">
+                Showing tutors for: <strong>{{ selected_names | join(', ') }}</strong>
+            </p>
+        {% endif %}
+        </div>
+        {% if tutors %}
+        <div class="mt-5">
+            <h2>Available Tutors</h2>
+            <p>These tutors are enrolled in subjects you're taking:</p>
+            <div class="row">
+                {% for tutor in tutors %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            {% include '_tutorcard.html' %}
+                            <div class="card-footer">
+                            <form action="{{ url_for('book_appointment') }}" method="post">
+                                {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+                                <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+                                <a href="{{ url_for('book_appointment', tutor_id=tutor.id) }}" class="btn btn-primary">Book Appointment</a>
+                            </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+     <div class="mt-5 text-center">
+        <a href="{{ url_for('request_class') }}" class="btn btn-warning">
+            I can't find any tutors for my class
+        </a>
+    </div>
+    {% elif current_user.role == UserRole.TUTOR %}
+    <!-- Tutor View -->
+    <div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header text-white text-center" style="background-color: #005a8b;">            
+            <h4 class="mb-0">Students Requesting Classes</h4>
+        </div>
+        <div class="card-body">
+            {% if requested_classes %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student Username</th>
+                                <th>Email</th>
+                                <th>Requested Class</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request, student, subject in requested_classes %}
+                            <tr>
+                                <td><a class="fw-bold" href="{{ url_for('user', username=student.username) }}">{{ student.username }}</a></td>
+                                <td>{{ student.email }}</td>
+                                <td>{{ subject.name }} - {{ subject.topic }}</td>
+                                <td>
+                                    {% if subject not in current_user.my_subjects %}
+                                        <form action="{{ url_for('add_subject') }}" method="post" class="d-inline">
+                                            {{ form.hidden_tag() }}
+                                            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                            <button type="submit" class="btn btn-success btn-sm">Add Class</button>
+                                        </form>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Class already added</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info mb-0" role="alert">
+                    No students have requested classes yet.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+    {% endif %}
+{% if debug_info %}
+<div class="alert alert-warning mt-4">
+    <h5>Debug: Tutors filtered out</h5>
+    <ul>
+    {% for entry in debug_info %}
+        <li>
+            <strong>{{ entry.tutor.username }}</strong> (ID: {{ entry.tutor.id }})<br>
+            Reason: {{ entry.reason }}<br>
+            Availabilities:
+            <ul>
+                {% for avail in entry.availabilities %}
+                    <li>{{ avail }}</li>
+                {% endfor %}
+            </ul>
+            Booked times:
+            <ul>
+                {% for booked in entry.booked %}
+                    <li>{{ booked.date }}: {{ booked.booked_times }}</li>
+                {% endfor %}
+            </ul>
+        </li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

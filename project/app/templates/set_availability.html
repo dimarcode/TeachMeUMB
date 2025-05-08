@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% import 'bootstrap_wtf.html' as wtf %}
+
+{% block content %}
+<div class="container">
+    <h1>Set Your Availability</h1>
+    
+    <!-- Availability Form -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="POST" action="{{ url_for('set_availability') }}" class="form" id="availability-form">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <select name="{{ form.day_of_week.name }}" id="{{ form.day_of_week.id }}" class="form-select">
+                            <option value="" selected disabled>Select a day of the week</option>
+                            {% for value, label in form.day_of_week.choices %}
+                                <option value="{{ value }}" {% if form.day_of_week.data == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <select id="start_hour" class="form-select" style="width:120px;">
+                            <option value="" selected disabled>Start Time</option>
+                            {% for h in range(1, 13) %}
+                            <option value="{{ "%02d"|format(h) }}">{{ h }}:00</option>
+                            {% endfor %}
+                        </select>
+                        <select id="start_ampm" class="form-select" style="width:90px;">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <select id="end_hour" class="form-select" style="width:120px;">
+                            <option value="" selected disabled>End Time</option>
+                            {% for h in range(1, 13) %}
+                            <option value="{{ "%02d"|format(h) }}">{{ h }}:00</option>
+                            {% endfor %}
+                        </select>
+                        <select id="end_ampm" class="form-select" style="width:90px;">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Hidden fields to submit as time strings -->
+                <input type="hidden" name="start_time" id="start_time">
+                <input type="hidden" name="end_time" id="end_time">
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+
+    <!-- Current Availability Schedule -->
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Current Availability Schedule</h2>
+            {% if availabilities %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for avail in availabilities %}
+                            <tr>
+                                <td>{{ ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][avail.day_of_week] }}</td>
+                                <td class="start-time" data-time="{{ avail.start_time }}">{{ avail.start_time }}</td>
+                                <td class="end-time" data-time="{{ avail.end_time }}">{{ avail.end_time }}</td>
+                                <td>
+                                    <form action="{{ url_for('delete_availability', availability_id=avail.id) }}" method="post" style="display: inline;">
+                                        {{ form.hidden_tag() }}  <!-- Add this line to include CSRF token -->
+                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No availability slots set yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Format all start times
+        document.querySelectorAll('.start-time').forEach(function(td) {
+            const raw = td.getAttribute('data-time');
+            td.textContent = moment.utc(raw, 'HH:mm').local().format('LT');
+        });
+        // Format all end times
+        document.querySelectorAll('.end-time').forEach(function(td) {
+            const raw = td.getAttribute('data-time');
+            td.textContent = moment.utc(raw, 'HH:mm').local().format('LT');
+        });
+
+        const form = document.getElementById('availability-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // --- START TIME ---
+                let sh = parseInt(document.getElementById('start_hour').value, 10);
+                let sap = document.getElementById('start_ampm').value;
+                if (sap === 'PM' && sh !== 12) sh += 12;
+                if (sap === 'AM' && sh === 12) sh = 0;
+                // Create a moment in local time, then convert to UTC
+                let startLocal = moment({hour: sh, minute: 0});
+                let startUtc = startLocal.utc().format('HH:mm');
+
+                // --- END TIME ---
+                let eh = parseInt(document.getElementById('end_hour').value, 10);
+                let eap = document.getElementById('end_ampm').value;
+                if (eap === 'PM' && eh !== 12) eh += 12;
+                if (eap === 'AM' && eh === 12) eh = 0;
+                let endLocal = moment({hour: eh, minute: 0});
+                let endUtc = endLocal.utc().format('HH:mm');
+
+                // Set hidden fields for backend submission (in UTC)
+                document.getElementById('start_time').value = startUtc;
+                document.getElementById('end_time').value = endUtc;
+            });
+        }
+    });
+</script>
+{% endblock %}

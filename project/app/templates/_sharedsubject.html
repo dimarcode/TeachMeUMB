@@ -1,0 +1,8 @@
+    <p class="card-text">
+        <strong>Shared subjects with {{ tutor.username }}:</strong><br>
+        {% for subject in tutor.my_subjects %}
+            {% if subject in current_user.my_subjects %}
+            <span class="badge bg-primary">{{ subject.name }}<br></span>
+            {% endif %}
+        {% endfor %}
+    </p>

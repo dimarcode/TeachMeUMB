@@ -1,0 +1,47 @@
+services:
+  
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - mail
+    networks:
+      - app-network
+  
+  backend:
+    build: ./project
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./project:/app
+    environment:
+      - FLASK_APP=teachmeumb.py
+      - FLASK_DEBUG=1
+      - MAIL_SERVER=mail
+      - MAIL_PORT=1025
+    networks:
+      - app-network
+
+  mail:
+    build: ./mail  # Build the MailHog image from the Dockerfile in the 'mail' folder
+    ports:
+      - "8025:8025"  # MailHog web interface
+      - "1025:1025"  # SMTP server
+    environment:
+      - MAIL_SERVER=localhost
+      - MAIL_PORT=1025
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pycache:
+    driver: local

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Test Tutor Availability</h1>
+    <form method="POST" action="{{ url_for('test_availability') }}">
+        {{ form.hidden_tag() }} <!-- Include CSRF token -->
+        <div class="mb-3">
+            {{ form.tutor_id.label(class="form-label") }}
+            {{ form.tutor_id(class="form-select") }}
+        </div>
+        <div class="mb-3">
+            {{ form.day_of_week.label(class="form-label") }}
+            {{ form.day_of_week(class="form-select") }}
+        </div>
+        <div class="mb-3">
+            {{ form.date.label(class="form-label") }}
+            {{ form.date(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">Check Availability</button>
+    </form>
+
+    {% if availabilities is not none %}
+        <h2 class="mt-4">Availability</h2>
+        {% if availabilities %}
+            <ul class="list-group">
+                {% for availability in availabilities %}
+                    <li class="list-group-item">
+                        {{ availability.start_time.strftime('%I:%M %p') }} - {{ availability.end_time.strftime('%I:%M %p') }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No availability found for the selected day.</p>
+        {% endif %}
+    {% endif %}
+
+    {% if available_times or unavailable_times %}
+            <h2 class="mt-4">Availability</h2>
+
+            <h3>Available Times</h3>
+            {% if available_times %}
+                <ul class="list-group">
+                    {% for time in available_times %}
+                        <li class="list-group-item">
+                            {{ time.strftime('%I:%M %p') }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No available times for the selected day.</p>
+            {% endif %}
+
+            <h3>Unavailable Times</h3>
+            {% if unavailable_times %}
+                <ul class="list-group">
+                    {% for time in unavailable_times %}
+                        <li class="list-group-item">
+                            {{ time.strftime('%I:%M %p') }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>All times are available for the selected day.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endblock %}

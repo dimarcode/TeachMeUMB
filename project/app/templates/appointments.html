@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <h1>Appointments</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Student ID</th>
+                <th>Tutor ID</th>
+                <th>Created Date</th>
+                <th>Booking Date</th>
+                <th>Booking Time</th>
+                <th>Status</th>
+                <th>Last Updated By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for appointment in appointments %}
+            <tr>
+                <td>{{ appointment.id }}</td>
+                <td>{{ appointment.student_id }}</td>
+                <td>{{ appointment.tutor_id }}</td>
+                <td>{{ appointment.created_date }} {{ moment(appointment.created_date).format('LLL') }}</td>
+                <td>{{ appointment.booking_date }} {{ appointment.booking_date.strftime('%B %d, %Y') }}</td>
+                <td>{{ appointment.booking_time }} {{ moment(appointment.booking_time).format('LLL') }}</td>
+                <td>{{ appointment.status }}</td>
+                <td>{{ appointment.last_updated_by }}</td>
+                <td>
+                    <a href="{{ url_for('appointment_update', appointment_id=appointment.id) }}" class="btn btn-primary btn-sm">Update</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- Appointment Info -->
+        <div class="col-12 col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-2">Book Appointment with <span class="text-primary"><a href="{{ url_for('user', username=appointment.tutor.username) }}">{{ appointment.tutor.username }}</a></span></h4>
+                    <p class="mb-1"><strong>Subject:</strong> {{ appointment.subject.name }}</p>
+                    <p class="mb-1"><strong>Original Date:</strong> {{ appointment.booking_date.strftime('%B %d, %Y') }}</p>
+                    <p class="mb-1"><strong>Original Time:</strong> {{ moment(appointment.booking_time).format('LT') }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar & Form -->
+        <div class="col-12 col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <!-- Calendar Navigation -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button id="prev-week" class="btn btn-outline-primary btn-sm">&larr; Previous Week</button>
+                        <h5 id="current-week" class="text-center mb-0"></h5>
+                        <button id="next-week" class="btn btn-outline-primary btn-sm">Next Week &rarr;</button>
+                    </div>
+
+                    <!-- Calendar Table -->
+                    <div class="table-responsive-sm mb-4">
+                        <table class="table table-sm align-middle">
+                            <thead class="calendar-header">
+                                <tr>
+                                    {% for i in range(7) %}
+                                    <th scope="col" id="day-{{ i }}" class="day border px-1 align-middle">
+                                        <button type="button" class="clickable-day btn btn-link text-truncate w-100 small"></button>
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+
+                    <!-- Update Form -->
+                    <form method="post">
+                        {{ form.hidden_tag() }}
+                        <input type="hidden" id="tutor_id" name="tutor_id" value="{{ appointment.tutor.id }}">
+
+                        <!-- Selected Date Display -->
+                        <div class="mb-3">
+                            <span class="fw-semibold" id="date-display">Selected Date: None</span>
+                        </div>
+                        <input type="hidden" id="selected_date" name="booking_date" value="">
+                        <input type="hidden" id="selected_time" name="booking_time">
+
+                        <!-- Time Slots -->
+                        <div class="form-group mb-3">
+                            <label class="fw-semibold">Available Time Slots:</label>
+                            <div id="time_slots" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <!-- Location Selection -->
+                        <div class="form-group mb-3">
+                            {{ form.location_id.label(class="fw-semibold") }}
+                            {{ form.location_id(class="form-control") }}
+                            {% for error in form.location_id.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="form-group mb-3">
+                            {{ form.directions.label(class="fw-semibold") }}
+                            {{ form.directions(class="form-control") }}
+                            {% for error in form.directions.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="submit-btn" disabled>Update Appointment</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Debug Information (collapsible) -->
+            <div class="accordion" id="debugAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingDebug">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDebug" aria-expanded="false" aria-controls="collapseDebug">
+                            API Debug Information
+                        </button>
+                    </h2>
+                    <div id="collapseDebug" class="accordion-collapse collapse" aria-labelledby="headingDebug" data-bs-parent="#debugAccordion">
+                        <div class="accordion-body">
+                            <div id="rawJsonDiv"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- row -->
+</div> <!-- container -->
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let currentDate = new Date();
+
+        function getStartOfWeek(date) {
+            const startOfWeek = new Date(date);
+            startOfWeek.setDate(date.getDate() - date.getDay());
+            return startOfWeek;
+        }
+
+        function updateCalendar(startOfWeek) {
+            const dayNames = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
+
+            for (let i = 0; i < 7; i++) {
+                const dayElement = document.getElementById(`day-${i}`);
+                const button = dayElement.querySelector('.clickable-day');
+                const currentDay = new Date(startOfWeek);
+                currentDay.setDate(startOfWeek.getDate() + i);
+
+                // Format dates for display and API
+                const displayDate = `${currentDay.getMonth() + 1}/${currentDay.getDate()}`;
+                const apiDate = `${currentDay.getFullYear()}-${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
+
+                button.textContent = `${dayNames[i]} ${displayDate}`;
+                button.dataset.apiDate = apiDate;
+                button.dataset.displayDate = displayDate;
+
+                button.onclick = function() {
+                    // Update only the essential elements
+                    document.getElementById('date-display').textContent = `Selected Date: ${this.dataset.displayDate}`;
+                    document.getElementById('selected_date').value = this.dataset.apiDate;
+                    
+                    // Fetch time slots (no longer dependent on the display elements)
+                    fetchTimeSlots(this.dataset.apiDate);
+                };
+            }
+
+            // Format week display
+            const weekStart = new Date(startOfWeek);
+            const weekEnd = new Date(startOfWeek);
+            weekEnd.setDate(startOfWeek.getDate() + 6);
+            const formattedWeekStart = `${dayNames[weekStart.getDay()]}, ${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
+            const formattedWeekEnd = `${dayNames[weekEnd.getDay()]}, ${weekEnd.getMonth() + 1}/${weekEnd.getDate()}`;
+            document.getElementById('current-week').textContent = `${formattedWeekStart} - ${formattedWeekEnd}`;
+        }
+
+        function fetchTimeSlots(selectedDate) {
+            const timeSlotsContainer = document.getElementById('time_slots');
+            const rawJsonDiv = document.getElementById('rawJsonDiv');
+            const tutorId = document.getElementById('tutor_id').value;
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (selectedDate) {
+                const url = `/api/get_timeslots?tutor_id=${tutorId}&selected_date=${selectedDate}`;
+
+                axios.get(url)
+                    .then(function (response) {
+                        timeSlotsContainer.innerHTML = '';
+                        const availableTimes = response.data.available_times;
+
+                        if (availableTimes.length === 0) {
+                            timeSlotsContainer.innerHTML = '<p class="text-muted">No time slots available</p>';
+                            submitBtn.disabled = true;
+                        } else {
+                            availableTimes.forEach(timeSlot => {
+                                // Check if the time is a string (old format) or an object (new format)
+                                let displayTime, rawTime;
+                                
+                                if (typeof timeSlot === 'string') {
+                                    // Treat the backend time as UTC, then convert to local time for display
+                                    rawTime = timeSlot;
+                                    displayTime = moment.utc(timeSlot, 'HH:mm').local().format('h:mm A');
+                                } else {
+                                    // New format: object with value and display properties
+                                    rawTime = timeSlot.value;
+                                    displayTime = timeSlot.display;
+                                }
+                                
+                                const button = document.createElement('button');
+                                button.type = 'button';
+                                button.className = 'btn btn-outline-primary';
+                                button.textContent = displayTime;
+                                
+                                // Store the raw time value for form submission
+                                button.dataset.originalTime = rawTime;
+                                
+                                button.onclick = function() {
+                                    // Remove active class from all buttons
+                                    timeSlotsContainer.querySelectorAll('.btn').forEach(btn => {
+                                        btn.classList.remove('active');
+                                    });
+                                    
+                                    // Add active class to clicked button
+                                    this.classList.add('active');
+                                    
+                                    // Store the original time in the hidden field
+                                    document.getElementById('selected_time').value = this.dataset.originalTime;
+                                    
+                                    // Enable submit button
+                                    submitBtn.disabled = false;
+                                };
+                                
+                                timeSlotsContainer.appendChild(button);
+                            });
+                            submitBtn.disabled = false;
+                        }
+
+                        rawJsonDiv.innerHTML = JSON.stringify(response.data, null, 2);
+                    })
+                    .catch(function (error) {
+                        console.error('Error:', error);
+                        timeSlotsContainer.innerHTML = '<p class="text-danger">Error loading time slots</p>';
+                        rawJsonDiv.innerHTML = 'Error fetching data';
+                        submitBtn.disabled = true;
+                    });
+            }
+        }
+
+        // Navigation event listeners
+        document.getElementById('prev-week').onclick = function() {
+            currentDate.setDate(currentDate.getDate() - 7);
+            updateCalendar(getStartOfWeek(currentDate));
+        };
+
+        document.getElementById('next-week').onclick = function() {
+            currentDate.setDate(currentDate.getDate() + 7);
+            updateCalendar(getStartOfWeek(currentDate));
+        };
+
+        // Initialize calendar
+        updateCalendar(getStartOfWeek(currentDate));
+    });
+</script>
+{% endblock %}

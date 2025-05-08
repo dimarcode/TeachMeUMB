@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Hi, {{ current_user.username }}!</h1>
+
+    
+
+    {% if homepage_messages %}
+    <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
+        <span class="me-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </span>
+        <div class="fw-bold mb-0 flex-grow-1">
+            {% if current_user.role == UserRole.TUTOR %}
+                Hello and welcome to TeachMeUMB! Please perform the following actions so that students can book appointments with you:
+            {% else %}
+                To book an appointment with a tutor, first you must:
+            {% endif %}
+        </div>
+    </div>
+        {% for msg in homepage_messages %}
+            <div class="alert alert-{{ msg.type }} d-flex align-items-center mb-2" role="alert">
+                <div class="fw-bold flex-grow-1 mb-0">
+                    {{ msg.text }}
+                    <a href="{{ msg.link_url }}" class="alert-link">{{ msg.link_text }}</a>
+                </div>
+            </div>
+        {% endfor %}
+    {% elif (current_user.role == UserRole.TUTOR and current_user.tutor_appointments.count() == 0) %}
+        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+            <strong>Reminder:</strong> You haven't been booked for any appointments yet!<br><br>
+            Some things you can try:<br>
+            - Add more 
+            <a href="{{ url_for('set_availability') }}" class="alert-link">time to your availability</a><br>
+            - Check for students that can't find tutors for their classes
+            <a href="{{ url_for('explore') }}" class="alert-link">on the the explore page</a>
+            
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% elif (current_user.role == UserRole.STUDENT and current_user.student_appointments.count() == 0) %}
+        <div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+            <strong>Reminder:</strong> You haven't booked any appointments yet!<br>
+            Tutors can be found
+            <a href="{{ url_for('explore') }}" class="alert-link">on the explore page</a>.<br>
+            If no tutors are available for the class you need,
+            <a href="{{ url_for('request_class') }}" class="alert-link">try requesting a class</a>.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+    <div class="alert alert-primary alert-dismissible fade show d-flex align-items-center mt-3" role="alert">
+        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+        <div>
+            This dashboard is where you’ll find your appointment information. {% if current_user.role == UserRole.TUTOR %}<br>When you are ready to start an appointment, click the "Begin" button next to the appointment.{% endif %}
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% if appointments_needing_review %}
+    <div class="mt-5">
+        <h3>Appointments Needing Your Review</h3>
+        {% for appointment in appointments_needing_review %}
+            {% include '_appointment.html' with context %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return; // Prevent errors if the element is missing
+
+            // Fetch events from the API endpoint
+            fetch('/api/events')
+                .then(response => response.json())
+                .then(events => {
+                    var calendar = new FullCalendar.Calendar(calendarEl, {
+                        initialView: 'dayGridMonth',
+                        themeSystem: 'bootstrap5',
+                        height: 650,
+                        timeZone: 'America/New_York',
+                        events: events,
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                        },
+                        eventClick: function(info) {
+
+                            info.jsEvent.preventDefault();
+
+                            // Get modal elements
+                            const modalTitle = document.getElementById('modalTitle');
+                            const modalBody = document.getElementById('modalBody');
+                            const modalFooter = document.getElementById('modalFooter');
+
+                            // Format the appointment time
+                            const appointmentDate = info.event.extendedProps.display_date;
+                            const appointmentTime = info.event.extendedProps.display_time;
+
+
+
+
+                            // Get the course name from the event title or subject property
+                            const courseName = info.event.title;
+
+                            // Set custom formatted content
+                            modalTitle.textContent = courseName;
+                            modalBody.innerHTML = `
+                                <div class="appointment-details">
+                                    <p><strong>Date:</strong> ${appointmentDate}</p>
+                                    <p><strong>Time:</strong> ${appointmentTime}</p>
+                                    <p><strong>Status:</strong> ${info.event.extendedProps.status}</p>
+                                    ${info.event.extendedProps.notes ? 
+                                        `<p><strong>Additional Notes:</strong> ${info.event.extendedProps.notes}</p>` 
+                                        : ''}
+                                </div>
+                            `;
+                            modalFooter.innerHTML = `
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            `;
+
+                            // Show the modal
+                            const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+                            eventModal.show();
+                        }
+                    });
+
+                    calendar.render();
+                });
+        });
+    </script>
+    
+    
+    
+
+    {% if current_user.student_appointments.count() > 0 or current_user.tutor_appointments.count() > 0 %}
+        <!-- Pending Appointments That Need Your Approval -->
+        <div class="mt-5">
+            {% if pending_needs_approval %}
+                <h3>Appointments Waiting for Your Approval</h3>
+                    {% for appointment in pending_needs_approval %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+
+         <!-- Custom Modal -->
+        <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                Custom modal
+            </div>
+            <div class="modal-footer" id="modalFooter">
+                Custom footer
+            </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Pending Appointments Waiting for Student/Tutor Approval -->
+        <div class="mt-5">
+            {% if pending_waiting_for_other %}
+                {% if current_user.role == UserRole.TUTOR %}
+                    <h3>Appointments Waiting for the Student's Approval</h3>
+                {% else %}
+                    <h3>Appointments Waiting for the Tutor's Approval</h3>
+                {% endif %}
+                    {% for appointment in pending_waiting_for_other %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if confirmed_appointments %}
+                <h3>Your Confirmed Appointments</h3>
+                    {% for appointment in confirmed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+        <!-- Confirmed Appointments Section -->
+        <div class="mt-5">
+            {% if completed_appointments %}
+                <h3>Your Completed Appointments</h3>
+                    {% for appointment in completed_appointments %}
+                        {% include '_appointment.html' with context %}
+                    {% endfor %}
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import 'bootstrap_wtf.html' as wtf %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-start min-vh-100 pt-5" style="padding-top: 5vh;">
+    <div class="card shadow border-0 p-4" style="max-width: 400px; width: 100%;">
+        <div class="text-center mb-3">
+            <img src="{{ url_for('static', filename='assets/logo.jpg') }}" alt="TeachMeUMB Logo" class="mb-2" style="height: 90px;">
+        </div>
+
+        <div class="mb-3">
+            {{ wtf.quick_form(form) }}
+        </div>
+
+        <div class="text-center mt-3 small">
+            <p class="mb-1">
+                <a href="{{ url_for('register') }}">New User?</a>
+            </p>
+            <p>
+                <a href="{{ url_for('reset_password_request') }}">Forgot Your Password?</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

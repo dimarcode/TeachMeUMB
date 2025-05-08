@@ -1,0 +1,42 @@
+<li class="list-group-item d-flex align-items-start">
+    <div class="me-3 mt-1">
+        <span class="badge bg-warning text-dark rounded-circle p-2">
+            <i class="bi bi-exclamation-triangle"></i>
+        </span>
+    </div>
+    <div class="flex-grow-1">
+        <div class="fw-bold mb-1">{{ alert.headline }}:</div>
+        <div id="alert-message-{{ alert.id }}">
+            {% if alert.category == 'subject_available' %}
+                    The tutor    
+            {% endif %}
+            <a href="{{ url_for('user', username=alert.catalyst.username) }}" class="fw-semibold">{{ alert.catalyst.username }}</a>
+            {{ alert.message }}
+        </div>
+        <div class="small text-muted mt-1">
+            {% if alert.relevant_date or alert.relevant_time %}
+                <span><strong>Class:</strong> {{ alert.subject_name }}</span>
+                <span><strong>Date:</strong> {{ alert.relevant_date.strftime('%B %d, %Y') }}</span>
+                <span><strong>Time:</strong> {{ moment(alert.relevant_time).format('LT') }}</span>
+                {% if alert.category != 'subject_available' %}
+                    <span><strong>Location:</strong> {{ alert.alert_location.name }}</span>
+                {% endif %}
+            {% else %}
+                <span>No appointment details available.</span>
+            {% endif %}
+        </div>
+        <div class="small text-info mt-1">Check your <a href="{{url_for('index')}}">dashboard!</a></div>
+        <div class="small text-muted mt-1">
+            <span>Posted {{ moment(alert.timestamp).fromNow() }}</span>
+        <!-- Action buttons -->
+        <div class="mt-2">
+            {% if alert.status == 'active' %}
+                <a href="{{ url_for('archive_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-secondary">Archive</a>
+            {% else %}
+                <a href="{{ url_for('reset_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-primary">Reset</a>
+            {% endif %}
+            <a href="{{ url_for('remove_alert', alert_id=alert.id) }}" class="btn btn-sm btn-outline-danger"
+               onclick="return confirm('Are you sure you want to delete this alert?');">Delete</a>
+        </div>
+    </div>
+</li>
