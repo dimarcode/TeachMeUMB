@@ -10,7 +10,6 @@ from sqlalchemy import MetaData
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail
 from flask_moment import Moment
-from config import Config
 
 naming_convention = {
     "ix": "ix_%(column_0_label)s",

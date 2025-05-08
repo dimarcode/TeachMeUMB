@@ -28,6 +28,7 @@ langdetect
 Mako
 MarkupSafe
 packaging
+PIL
 pillow
 PyJWT
 python-dotenv
