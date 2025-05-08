@@ -19,6 +19,8 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB limit
     
 class ProductionConfig(Config):
     DEBUG = False
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB limit
