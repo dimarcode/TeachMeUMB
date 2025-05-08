@@ -36,6 +36,9 @@ class Subject(db.Model):
     requested_subjects = db.relationship('RequestedSubject', foreign_keys='RequestedSubject.subject_id',
                                             backref='requested_subject', lazy='dynamic')
     
+    subject_examples: so.WriteOnlyMapped['WorkExample'] = so.relationship(
+        back_populates='subject', cascade='all, delete-orphan')
+    
 
 class RequestedSubject(db.Model):
     id: so.Mapped[int] = so.mapped_column(primary_key=True)
@@ -78,7 +81,7 @@ class User(UserMixin, db.Model):
                                            backref='student', lazy='dynamic')
     tutor_appointments = db.relationship('Appointment', foreign_keys='Appointment.tutor_id', 
                                          backref='tutor', lazy='dynamic')
-    work_examples = so.WriteOnlyMapped['WorkExample'] = so.relationship(
+    work_examples: so.WriteOnlyMapped['WorkExample'] = so.relationship(
         back_populates='user', cascade='all, delete-orphan')
     last_message_read_time: so.Mapped[Optional[datetime]]
     messages_sent: so.WriteOnlyMapped['Message'] = so.relationship(
@@ -163,6 +166,20 @@ class User(UserMixin, db.Model):
         )
         db.session.add(availability)
         return availability
+
+class WorkExample(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
+    subject_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(Subject.id), index=True)
+    filename = db.Column(db.String(256), nullable=False)
+    title = db.Column(db.String(256), nullable=False)
+    description = db.Column(db.String(512), nullable=True)
+    timestamp: so.Mapped[datetime] = so.mapped_column(
+        index=True, default=lambda: datetime.now(timezone.utc))
+    # Optionally: description, filetype, etc.
+
+    user: so.Mapped[User] =  so.relationship(back_populates='work_examples')
+    subject: so.Mapped[Subject] = so.relationship(back_populates='subject_examples')
 
 
 class Appointment(db.Model):
@@ -301,19 +318,7 @@ class Post(db.Model):
         return '<Post {}>'.format(self.body)
 
 
-class WorkExample(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
-    subject_id = so.Mapped[int] = so.mapped_column(sa.ForeignKey(Subject.id), index=True)
-    filename = db.Column(db.String(256), nullable=False)
-    title = db.Column(db.String(256), nullable=False)
-    description = db.Column(db.String(512), nullable=True)
-    timestamp: so.Mapped[datetime] = so.mapped_column(
-        index=True, default=lambda: datetime.now(timezone.utc))
-    # Optionally: description, filetype, etc.
 
-    author: so.Mapped[User] =  so.relationship(back_populates='work_examples')
-    subject: so.Mapped[Subject] = so.relationship(back_populates='subject_examples')
 
 
 class Alert(db.Model):
