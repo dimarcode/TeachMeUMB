@@ -143,17 +143,10 @@ def index():
     # Homepage message if student has no subjects or tutor has no availability
     homepage_messages = []
 
-    if not current_user.profile_picture:
+    if current_user.role == UserRole.STUDENT and not current_user.my_subjects:
         homepage_messages.append({
             'type': 'warning',
-            'link_text': 'Add a profile picture',
-            'link_url': url_for('edit_profile')
-        })
-
-    if not current_user.my_subjects:
-        homepage_messages.append({
-            'type': 'warning',
-            'link_text': 'Choose your classes you are taking this semester',
+            'link_text': 'Choose the classes you are taking this semester',
             'link_url': url_for('add_subject')
         })
 
@@ -277,51 +270,45 @@ def user(username):
 def edit_profile():
     form = EditProfileForm(current_user.username)
     if form.validate_on_submit():
-        old_filename = current_user.profile_picture
-
+        # Check if a new profile picture was uploaded
         if form.profile_picture.data:
-            try:
-                # Use the old filename if it exists, otherwise generate a new one
-                if old_filename:
-                    filename = old_filename
-                else:
-                    filename = save_picture(form.profile_picture.data, return_filename_only=True)
-                
-                # Save the new picture, overwriting if necessary
-                save_picture(form.profile_picture.data, filename_override=filename)
-                current_user.profile_picture = filename
-            except Exception as e:
-                flash('There was an error saving your new profile picture.')
-                return redirect(url_for('edit_profile'))
+            # Remove old profile picture if it exists
+            if current_user.profile_picture:
+                old_path = os.path.join(
+                    app.root_path, 'static/profile_pictures', current_user.profile_picture
+                )
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            # Save new picture (implement save_picture to return the filename)
+            filename = save_picture(form.profile_picture.data)
+            current_user.profile_picture = filename
 
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
         db.session.commit()
         flash('Your changes have been saved.')
         return redirect(url_for('edit_profile'))
-
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.about_me.data = current_user.about_me
 
-    return render_template('edit_profile.html', title='Edit Profile', form=form, UserRole=UserRole)
-
+    return render_template('edit_profile.html', title='Edit Profile', form=form)
 
 
 @app.route('/remove_profile_picture', methods=['POST'])
 @login_required
 def remove_profile_picture():
     if current_user.profile_picture:
+        # Delete the file from disk if it exists
         file_path = os.path.join(app.root_path, 'static/profile_pictures', current_user.profile_picture)
         if os.path.exists(file_path):
             os.remove(file_path)
+        # Remove from user model
         current_user.profile_picture = None
         db.session.commit()
         flash('Profile picture removed.')
     return redirect(url_for('edit_profile'))
 
-
-    
 #######################
 # APPOINTMENTS SYSTEM #
 #######################
@@ -335,6 +322,7 @@ def explore():
     if current_user.role == UserRole.STUDENT:
         # Get selected subject IDs from the checkbox form
         subject_ids = request.args.getlist('subject_ids', type=int)
+        selected_date_str = request.args.get('selected_date')
 
         if subject_ids:
             # Show tutors who teach any of the selected subjects
@@ -387,32 +375,56 @@ def explore():
 
             # ... inside your availability loop ...
             for availability in availabilities:
-                for week_offset in range(weeks_ahead):
-                    days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
-                    check_date = date.today() + timedelta(days=days_ahead)
+                if selected_date_str:
+                    try:
+                        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+                        if availability.day_of_week != selected_date.weekday():
+                            continue
 
-                    booked_appointments = Appointment.query.filter_by(
-                        tutor_id=tutor.id,
-                        booking_date=check_date
-                    ).with_entities(Appointment.booking_time).all()
+                        booked_appointments = Appointment.query.filter_by(
+                            tutor_id=tutor.id,
+                            booking_date=selected_date
+                        ).with_entities(Appointment.booking_time).all()
 
-                    tutor_debug['booked'].append({
-                        'date': check_date,
-                        'booked_times': [bt.booking_time for bt in booked_appointments]
-                    })
+                        tutor_debug['booked'].append({
+                            'date': selected_date,
+                            'booked_times': [bt.booking_time for bt in booked_appointments]
+                        })
 
-                    booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        slots = generate_slots(availability.start_time, availability.end_time)
 
-                    # Generate all slots for this availability
-                    slots = generate_slots(availability.start_time, availability.end_time)
-                    for slot in slots:
-                        if slot not in booked_times:
-                            has_open_slot = True
+                        for slot in slots:
+                            if slot not in booked_times:
+                                has_open_slot = True
+                                break
+                    except ValueError:
+                        flash("Invalid date format", "danger")
+                else:
+                    for week_offset in range(weeks_ahead):
+                        days_ahead = (availability.day_of_week - date.today().weekday()) % 7 + 7 * week_offset
+                        check_date = date.today() + timedelta(days=days_ahead)
+
+                        booked_appointments = Appointment.query.filter_by(
+                            tutor_id=tutor.id,
+                            booking_date=check_date
+                        ).with_entities(Appointment.booking_time).all()
+
+                        tutor_debug['booked'].append({
+                            'date': check_date,
+                            'booked_times': [bt.booking_time for bt in booked_appointments]
+                        })
+
+                        booked_times = {bt.booking_time.time() for bt in booked_appointments}
+                        slots = generate_slots(availability.start_time, availability.end_time)
+
+                        for slot in slots:
+                            if slot not in booked_times:
+                                has_open_slot = True
+                                break
+                        if has_open_slot:
                             break
-                    if has_open_slot:
-                        break
-                if has_open_slot:
-                    break
+
 
             if has_open_slot:
                 filtered_tutors.append(tutor)
@@ -1096,11 +1108,6 @@ def notifications():
     def to_datetime(ts):
         if isinstance(ts, float):
             return datetime.fromtimestamp(ts, timezone.utc)
-        if isinstance(ts, datetime):
-            # Make all datetimes timezone-aware (UTC)
-            if ts.tzinfo is None:
-                return ts.replace(tzinfo=timezone.utc)
-            return ts
         return ts
 
     combined.sort(key=lambda x: to_datetime(x['timestamp']))
@@ -1174,7 +1181,9 @@ def test_availability():
 
     return render_template('test_availability.html', form=form, availabilities=availabilities, available_times=available_times, unavailable_times=unavailable_times)
 
-
+@app.route('/faq')
+def faq():
+    return render_template('faq.html', title='FAQs')
 
 # @app.context_processor
 # def inject_user_role():
