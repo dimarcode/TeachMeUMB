@@ -9,13 +9,13 @@ import sqlalchemy as sa
 import os
 from sqlalchemy import select
 from app import app, db, mail
-from app.forms import LoginForm, RegistrationForm, EditProfileForm, UserSubjectForm, \
+from app.forms import LoginForm, RegistrationForm, EditProfileForm, UploadWorkForm, UserSubjectForm, \
 BookAppointmentForm, UpdateAppointmentForm, RequestClassForm, MessageForm, ResetPasswordRequestForm, \
 ResetPasswordForm, AvailabilityForm, TestAvailabilityForm, BeginAppointmentForm, ReviewAppointmentForm
 from app.models import User, UserRole, Subject, Appointment, RequestedSubject, Message, \
-Notification, Alert, Availability, Review
+Notification, Alert, Availability, Review, WorkExample
 from app.email import send_password_reset_email
-from app.utils import save_picture
+from app.utils import save_picture, save_file_upload
 
 
 @app.before_request
@@ -310,6 +310,8 @@ def edit_profile():
                 flash('There was an error saving your new profile picture.')
                 return redirect(url_for('edit_profile'))
 
+
+
         # Only run this code if it's a full form submit (Save Changes button)
         current_user.username = form.username.data
         current_user.about_me = form.about_me.data
@@ -327,7 +329,6 @@ def edit_profile():
     return render_template('edit_profile.html', title='Edit Profile', form=form, UserRole=UserRole)
 
 
-
 @app.route('/remove_profile_picture', methods=['POST'])
 @login_required
 def remove_profile_picture():
@@ -340,6 +341,66 @@ def remove_profile_picture():
         flash('Profile picture removed.')
     return redirect(url_for('edit_profile'))
 
+
+@app.route('/upload_work', methods=['GET', 'POST'])
+@login_required
+def upload_work():
+    form = UploadWorkForm()
+    if form.validate_on_submit():
+        try:
+            
+            filename, original_filename = save_file_upload(form.work_example.data) # Get both filenames
+            title = form.title.data
+            description = form.description.data
+            subject_id = form.subject_id.data
+            current_user.work_example = filename
+
+            new_work_example = WorkExample(
+                original_filename=original_filename,
+                title=title,
+                description=description,
+                subject_id=subject_id,
+                user_id=current_user.id,
+                tutor_upload_agreement=form.upload_terms_agreement.data,
+                filename=filename
+            )
+
+            db.session.add(new_work_example)
+            db.session.commit()
+
+            flash('File uploaded successfully.')
+        except Exception as e:
+            flash(f'Error uploading file: {str(e)}')
+        return redirect(url_for('user', username=current_user.username))
+    return render_template('upload_work.html', title='Upload Work Example', form=form)
+
+
+@app.route('/tutor-upload-agreement')
+def tutor_upload_agreement():
+    return render_template('tutor_upload_agreement.html')
+
+
+@app.route('/remove_work_example/<int:work_id>', methods=['POST'])
+@login_required
+def remove_work_example(work_id):
+    # Get the work example
+    work_example = db.session.get(WorkExample, work_id)
+    
+    # Check if it exists and belongs to the current user
+    if work_example and work_example.user_id == current_user.id:
+        # Delete the file from filesystem
+        file_path = os.path.join(app.root_path, 'static/file_uploads', work_example.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        # Delete the record from database
+        db.session.delete(work_example)
+        db.session.commit()
+        flash('Work example removed successfully.')
+    else:
+        flash('Permission denied or work example not found.', 'error')
+    
+    return redirect(url_for('user', username=current_user.username))
 
     
 #######################

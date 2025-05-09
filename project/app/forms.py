@@ -53,7 +53,6 @@ class RegistrationForm(FlaskForm):
         if user is not None:
             raise ValidationError('Please use a different email address.')
 
-
 class EditProfileForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     profile_picture = FileField('Update Profile Picture', validators=[
@@ -72,6 +71,21 @@ class EditProfileForm(FlaskForm):
                 User.username == username.data))
             if user is not None:
                 raise ValidationError('Please use a different username.')
+            
+class UploadWorkForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    description = TextAreaField('Description', validators=[Optional(), Length(max=200)])
+    subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    work_example = FileField('Upload Document', validators=[
+        FileAllowed(['doc', 'docx', 'pdf'], 'Documents only!')
+    ])
+    upload_terms_agreement = BooleanField('I have read and agree to the Tutor Upload Agreement', 
+                             validators=[DataRequired(message="You must agree to the terms to upload content")])
+    submit = SubmitField('Upload Work Example')
+
+    def __init__(self, *args, **kwargs):
+        super(UploadWorkForm, self).__init__(*args, **kwargs)
+        self.subject_id.choices = [(s.id, f"{s.name} - {s.topic}") for s in current_user.my_subjects]
 
 class UserSubjectForm(FlaskForm):
     subject = SelectField('Subject', coerce=int, validators=[DataRequired()])
@@ -81,7 +95,6 @@ class UserSubjectForm(FlaskForm):
         super(UserSubjectForm, self).__init__(*args, **kwargs)
         self.subject.choices = [(s.id, f"{s.name} - {s.topic}") for s in Subject.query.order_by(Subject.name).all()]
     
-
 class BookAppointmentForm(FlaskForm):
     tutor_id = HiddenField("Tutor ID", validators=[DataRequired()])  # Hidden field to store tutor ID
     subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])

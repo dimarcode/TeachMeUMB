@@ -13,3 +13,4 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     ADMINS = ['your-email@example.com']
     POSTS_PER_PAGE = 25
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
