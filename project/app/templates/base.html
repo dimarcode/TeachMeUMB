@@ -42,7 +42,7 @@
 /* --- navbar --- */
 
     .form-control {
-        background-color: #fdf3e4;
+        background-color: white;
     }
 
     .navbar, .card-header {
@@ -177,7 +177,30 @@
 
     }
     
-    
+    /* --- Star Rating --- */
+    .star-rating {
+    direction: rtl;
+    }
+
+    .star-rating input[type="radio"] {
+    display: none;
+    }
+
+    .star-rating label {
+    font-size: 2rem;
+    color: #ccc;
+    cursor: pointer;
+    transition: color 0.2s;
+    }
+
+    .star-rating input[type="radio"]:checked ~ label {
+    color: #ffc107; 
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+    color: #ffcd39; 
+    }
 
 </style>
 </head>
