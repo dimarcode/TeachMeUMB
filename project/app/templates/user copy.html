@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- main container -->
+<div class="container mt-5">
+
+
+    <!-- main user profile section -->
+    <div class="card shadow-lg">
+        <div class="card-header text-white text-center">
+            <h2 class="mb-0">{{ user.username }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row g-4 align-items-start">
+                <div class="col-md-3 text-center align-items-top">
+                    <div class="position-relative mb-3">
+                        {% if user.profile_picture %}
+                            <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="{{ user.username }}'s profile picture">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="Default profile picture">
+                        {% endif %}
+                        {% if current_user.is_authenticated and user.role == UserRole.TUTOR %}
+                            <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
+                                data-bs-toggle="popover"
+                                data-bs-trigger="hover"
+                                data-bs-content="This tutor has submitted work for verification.">
+                                <i class="bi bi-check"></i>
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="row">
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item lead text-muted">
+                                {% if user.about_me %}
+                                    <p class="lead text-muted">{{ user.about_me }}</p>
+                                {% endif %}
+                            </li>
+                            <li class="list-group-item"><strong>Email:</strong> {{ user.email }}</li>
+                            <li class="list-group-item"><strong>Umass Boston ID:</strong> {{ user.umb_id }}</li>
+                            <li class="list-group-item"><strong>Role:</strong> {% if user.role == UserRole.TUTOR %} Tutor {% else %} Student {% endif %} </li>
+                                {% if user.last_seen %}
+                                    <li class="list-group-item">
+                                        <small class="text-muted">
+                                            <strong>Last seen on:</strong> {{ moment(user.last_seen).format('LLL') }}
+                                        </small>
+                                    </li>
+                                {% endif %}
+                        </ul>
+                    </div>
+
+                    <!-- User management buttons -->
+                    <div class="d-flex align-items-center gap-2">
+                        {% if user == current_user %}
+                            <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                            <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
+                            <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm">Set Availability</a>
+                            <a href="{{ url_for('upload_work') }}" class="btn btn-outline-info btn-sm">Upload Examples of your Work</a>
+                        {% endif %}
+                        {% if user != current_user %}
+                            <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username }} A Message</a>
+                        {% endif %}
+                        {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_user and user.role == UserRole.TUTOR %}
+                            {% if not current_user.profile_picture %}  
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+                                    Book Appointment
+                                </button>
+                                <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5" id="staticBackdropLabel">Profile Picture</h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        In order to book an appointment, please <a href="{{ url_for('edit_profile') }}">set a profile picture</a>. This helps tutors identify you.                                  </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+                            {% else %}
+                            <a href="{{ url_for('book_appointment', tutor_id=user.id) }}" class="btn btn-outline-primary btn-sm">Book Appointment</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end of main user profile section -->
+
+
+    <!-- Current Classes Section -->
+    {% if user.my_subjects %} 
+        <div class="card shadow mt-4">
+            <div class="card-header umb-card-header-blue">
+                {% if user == current_user %}
+                    <h5 class="mb-0">Your Current Classes</h5>
+                {% elif user.role == UserRole.TUTOR %}
+                    <h5 class="mb-0">{{ user.username }} is offering tutoring for the following classes:</h5>
+                {% elif user.role == UserRole.STUDENT %}
+                    <h5 class="mb-0">{{ user.username }} is looking for tutoring in the following classes:</h5>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for subject in user.my_subjects %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div class="align-items0-center" ><strong>{{ subject.name }}</strong> - {{ subject.topic }}</div>
+                            {% if current_user.is_authenticated and user == current_user %}
+                            <a href="{{ url_for('remove_subject', subject_id=subject.id) }}" class="btn btn-sm btn-danger">Remove</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% else %}
+        <!-- if there are no classes, print a warning -->
+        <div class="shadow mt-4">
+            <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
+                <div class="fw-bold flex-grow-1 mb-0">
+                    {% if user == current_user %}
+                    You haven't enrolled in any classes yet. Appointments cannot be made until you
+                    <a href="{{ url_for('add_subject') }}" class="alert-link">add your classes.</a>
+                    {% else %}
+                    {{ user.username }} hasn't added in any classes yet. Unfortunately, you cannot book an appointment with this tutor until they add their classes.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    <!-- end of current classes section -->
+
+
+    <!-- Requested Classes Section -->
+    {% if current_user.is_authenticated and user == current_user and current_user.role == UserRole.STUDENT %}
+        {% if requested_subjects %}
+        <div class="card shadow-lg">
+            <div class="card-header umb-card-header-blue">
+                <h4 class="mb-0">Your Requested Classes</h4>
+            </div>
+            <div class="card-body">
+                <p class="lead text-muted">You have requested the following classes:</p>
+    
+                <ul class="list-group">
+                    {% for subject in requested_subjects %}
+                        <li class="list-group-item">
+                            <div class="align-items0-center" ><strong>{{ subject.name }}</strong> - {{ subject.topic }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>  
+        </div>
+        {% endif %}
+    {% endif %}
+    <!-- end of requested classes section -->
+
+
+    <!-- work examples section -->
+    {% if user.work_examples.count() > 0 %}
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                {% if user == current_user %}
+                <h5 class="mb-0">Examples of Your Work</h5>
+                {% else %}
+                <h5 class="mb-0">Examples of {{ user.username }}'s Work</h5>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for work in user.work_examples %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body card-body-layered">
+                                <h5 class="card-title">{{ work.title }}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">{{ work.subject.name }}</h6>
+                                <p class="card-text">{{ work.description }}</p>
+                            </div>
+                            <div class="card-footer card-footer-layered">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">{{ work.timestamp.strftime('%b %d, %Y') }}</small>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-primary" 
+                                        data-bs-toggle="modal" data-bs-target="#previewModal{{ work.id }}">
+                                        <i class="bi bi-eye"></i> View
+                                        </button>
+                                        {% if current_user.is_authenticated and user == current_user %}
+                                        <form method="POST" action="{{ url_for('remove_work_example', work_id=work.id) }}" 
+                                            class="d-inline" onsubmit="return confirm('Are you sure you want to delete this work example?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview Modal for each work -->
+                    <div class="modal fade" id="previewModal{{ work.id }}" tabindex="-1" aria-labelledby="previewModalLabel{{ work.id }}" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="previewModalLabel{{ work.id }}">{{ work.title }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <!-- Preview based on file type -->
+                            {% set file_ext = work.filename.split('.')[-1].lower() %}
+                                {% if file_ext in ['jpg', 'jpeg', 'png'] %}
+                                    <!-- Image preview -->
+                                    <img src="{{ url_for('static', filename='file_uploads/' + work.filename) }}" class="img-fluid" alt="{{ work.title }}">
+                                {% elif file_ext == 'pdf' %}
+                                    <!-- PDF preview -->
+                                    <embed src="{{ url_for('static', filename='file_uploads/' + work.filename) }}" type="application/pdf" width="100%" height="600px">
+                                {% else %}
+                                    <!-- Other file types -->
+                                    <div class="p-5 text-center">
+                                        <i class="bi bi-file-earmark-text display-1"></i>
+                                        <p class="mt-3">This file type ({{ file_ext }}) cannot be previewed directly.</p>
+                                    </div>
+                                {% endif %}
+                        </div>
+                        <div class="modal-footer">
+                            <a href="{{ url_for('static', filename='file_uploads/' + work.filename) }}" class="btn btn-primary" download>Download</a>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <!-- if there isn't any uploaded work, print a warning -->
+        <div class="shadow mt-4">
+            <div class="alert alert-warning d-flex align-items-center mb-2" role="alert">
+                <div class="fw-bold flex-grow-1 mb-0">
+                    {% if user == current_user %}
+                    You haven't uploaded any examples of your work yet. Uploading work will help give students an idea of your strengths as a tutor. If you would like to upload examples of your work, please go to the 
+                    <a href="{{ url_for('upload_work') }}" class="alert-link">upload work page.</a>
+                    {% else %}
+                    {{ user.username }} hasn't uploaded any examples of their work yet. If you would like to see examples of their work, please send them a message.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    <!-- end of work examples -->
+</div>
+<!-- end of main container -->
+{% endblock %}

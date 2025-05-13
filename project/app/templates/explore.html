@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
+<div class="container-sm">
     <!-- Calendar -->
 <!-- Student View -->    
     {% if current_user.role == UserRole.STUDENT %}
@@ -56,7 +56,13 @@
                 Showing tutors for: <strong>{{ selected_names | join(', ') }}</strong>
             </p>
         {% endif %}
+
         </div>
+
+        <div class="mt-5">
+            
+        </div>
+
         {% if tutors %}
         <div class="mt-5">
             <h2>Available Tutors</h2>
@@ -103,11 +109,9 @@
             </div>
         </div>
         {% endif %}
-     <div class="mt-5 text-center">
-        <a href="{{ url_for('request_class') }}" class="btn btn-warning">
-            I can't find any tutors for my class
-        </a>
-    </div>
+    <a href="{{ url_for('request_class') }}" class="btn btn-warning">
+        I can't find any tutors for my class
+    </a>
     {% elif current_user.role == UserRole.TUTOR %}
     <!-- Tutor View -->
     <div class="container mt-5">

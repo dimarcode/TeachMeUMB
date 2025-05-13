@@ -75,11 +75,12 @@ class EditProfileForm(FlaskForm):
 class UploadWorkForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     description = TextAreaField('Description', validators=[Optional(), Length(max=200)])
-    subject_id = SelectField('Subject', coerce=int, validators=[DataRequired()])
+    subject_id = SelectField('Subject', coerce=int, validators=[Optional()])
+    subject_other = StringField('Other Subject', validators=[Optional(), Length(max=50)])
     work_example = FileField('Upload Document', validators=[
         FileAllowed(['doc', 'docx', 'pdf'], 'Documents only!')
     ])
-    upload_terms_agreement = BooleanField('I have read and agree to the Tutor Upload Agreement', 
+    upload_terms_agreement = BooleanField('Tutor Upload Agreement', 
                              validators=[DataRequired(message="You must agree to the terms to upload content")])
     submit = SubmitField('Upload Work Example')
 

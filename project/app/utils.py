@@ -3,7 +3,7 @@ import os
 from app import app
 from PIL import Image
 
-def save_picture(form_picture, filename_override=None):
+def save_picture(form_picture, filename_override=None, return_filename_only=False):
     import secrets, os
     from PIL import Image
 
@@ -20,6 +20,8 @@ def save_picture(form_picture, filename_override=None):
     i.thumbnail(output_size)
     i.save(picture_path)
 
+    if return_filename_only:
+        return picture_fn
     return picture_fn
 
 def save_file_upload(form_file_upload, filename_override=None):

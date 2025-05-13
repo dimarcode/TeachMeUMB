@@ -13,7 +13,7 @@
                         {{ form.hidden_tag() }}
                         
                         <div class="mb-4">
-                            <label for="work_example" class="form-label">Upload File</label>
+                            <label for="work_example" class="form-label">File</label>
                             <div class="input-group">
                                 {{ form.work_example(class="form-control", id="work_example") }}
                                 <span class="input-group-text"><i class="bi bi-file-earmark-arrow-up"></i></span>
@@ -48,10 +48,11 @@
                                 <div class="text-danger">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        <div class="mb-3 form-check">
-                            {{ form.upload_terms_agreement(class="form-check-input") }}
+                        <div class="mb-3">
+                            {{ form.upload_terms_agreement.label(class="form-label") }}<br>
                             <label class="form-check-label" for="agreement">
-                                I have read and agree to the <a href="{{ url_for('tutor_upload_agreement') }}" target="_blank">Tutor Upload Agreement</a>
+                            {{ form.upload_terms_agreement(class="form-check-input") }}
+                            Yes, I agree to the terms in the <a href="{{ url_for('tutor_upload_agreement') }}" target="_blank">Content Upload Agreement</a><br>
                             </label>
                             {% for error in form.upload_terms_agreement.errors %}
                                 <div class="text-danger">{{ error }}</div>
@@ -61,7 +62,7 @@
                             <a href="{{ url_for('user', username=current_user.username) }}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left"></i> Back
                             </a>
-                            {{ form.submit(class="btn btn-primary") }}
+                            {{ form.submit(class="btn btn-success") }}
                         </div>
                     </form>
                 </div>

@@ -1,0 +1,133 @@
+
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <div class="main-body">
+    
+        <div class="row gutters-sm">
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex flex-column align-items-center text-center">   
+                            <div class="position-relative mb-3">
+                                {% if user.profile_picture %}
+                                    <img src="{{ url_for('static', filename='profile_pictures/' + user.profile_picture) }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="{{ user.username }}'s profile picture">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" class="img-fluid img-thumbnail mb-0 large-profile-image" alt="Default profile picture">
+                                {% endif %}
+                                {% if current_user.is_authenticated and user.role == UserRole.TUTOR %}
+                                    <span class="badge bg-success position-absolute top-0 start-100 translate-middle p-1 rounded-circle"
+                                        data-bs-toggle="popover"
+                                        data-bs-trigger="hover"
+                                        data-bs-content="This tutor has submitted work for verification.">
+                                        <i class="bi bi-check"></i>
+                                    </span>
+                                {% endif %}
+                                <div class="mt-3">
+                                    <h4>{{ user.username }}</h4>
+                                    <p class="lead text-muted">I am a {% if user.role == UserRole.TUTOR %} <em class="role-text">tutor</em> {% else %} <em class="role-text">student</em> {% endif %}</p>
+                                    <p class="text-muted font-size-sm">{{ user.aboutme }}</p>
+                                        {% if user != current_user %}
+                                            <a href="{{ url_for('send_message', recipient=user.username) }}" class="btn btn-outline-info btn-sm">Send {{ user.username }} A Message</a>
+                                        {% endif %}
+                                            {% if current_user.is_authenticated and current_user.role == UserRole.STUDENT and user != current_user and user.role == UserRole.TUTOR %}
+                                            {% if not current_user.profile_picture %}  
+                                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+                                                    Book Appointment
+                                                </button>
+                                                <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h1 class="modal-title fs-5" id="staticBackdropLabel">Profile Picture</h1>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        In order to book an appointment, please <a href="{{ url_for('edit_profile') }}">set a profile picture</a>. This helps tutors identify you.                                  </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+                                                    </div>
+                                                    </div>
+                                                </div>
+                                                </div>
+                                            {% else %}
+                                        <a href="{{ url_for('book_appointment', tutor_id=user.id) }}" class="btn btn-outline-primary btn-sm">Book Appointment</a>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <!-- USER INFO -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-3">
+                            <h6 class="mb-0">Name</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                            {{user.username}}
+                            </div>
+                        </div>
+                    <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                            <h6 class="mb-0">Email</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                            {{ user.email }}
+                            </div>
+                        </div>
+                    <hr>
+                        <div class="row">
+                            <div class="col-sm-3">
+                            <h6 class="mb-0">UMB ID</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                            {{ user.umb_id }}
+                            </div>
+                        </div>
+                    <hr>
+                    {% if user.last_seen %}
+                        <div class="row">
+                            <div class="col-sm-3">
+                            <h6 class="mb-0">Last seen:</h6>
+                            </div>
+                            <div class="col-sm-9 text-secondary">
+                            {{ moment(user.last_seen).format('LLL') }}
+                            </div>
+                        </div>
+                    {% endif %}
+                    <hr>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% if user == current_user %}
+                                <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                                <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm">Manage Classes</a>
+                            {% endif %}
+                            {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
+                                <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm">Set Availability</a>
+                                <a href="{{ url_for('upload_work') }}" class="btn btn-outline-info btn-sm">Upload Examples of your Work</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <!-- END OF USER INFO -->
+            
+            </div>
+            
+            <!-- SECOND COLUMN -->
+            <div class="col-md-8">
+                
+            
+                
+            </div>
+            <!-- END OF SECOND COLUMN -->
+        </div>
+
+    </div>
+</div>
+{% endblock %}
