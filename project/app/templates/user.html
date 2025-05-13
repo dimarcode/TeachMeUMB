@@ -3,8 +3,7 @@
 
 {% block content %}
 
-    <div class="container">
-        <div class="main-body">
+    
             <!-- FIRST ROW -->    
             <div class="row gutters-sm">
 
@@ -116,7 +115,7 @@
                                         <a href="{{ url_for('add_subject') }}" class="btn btn-outline-secondary btn-sm flex-fill">Manage Classes</a>
                                         {% if current_user.is_authenticated and current_user.role == UserRole.TUTOR and user == current_user %}
                                             <a href="{{ url_for('set_availability') }}" class="btn btn-outline-info btn-sm flex-fill">Set Availability</a>
-                                            <a href="{{ url_for('upload_work') }}" class="btn btn-outline-info btn-sm flex-fill">Upload Work</a>
+                                            <a href="{{ url_for('upload_work') }}" class="btn btn-outline-success btn-sm flex-fill">Upload Work</a>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -311,7 +310,6 @@
 
             </div>
             /SECOND ROW -->
-        </div>
-    </div>
+        
 
 {% endblock %}

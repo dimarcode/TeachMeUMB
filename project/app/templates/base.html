@@ -35,7 +35,7 @@
 
     body {
         padding-bottom: 60px;
-        padding-top: 45px;
+        padding-top: 60px;
         background-color: #eef6fa;
         text-align: left;
     }
@@ -142,7 +142,7 @@
     }
 
     .card-title a {
-        color: #8dc9e9;
+        color: #00334e;
     }
 
     .card-header, .file-upload-header {
@@ -372,15 +372,16 @@
         </div>
     </nav>
     <div class="container-sm mt-3">
-        <hr>
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-            <div class="alert alert-info" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
+        <div class="main-body">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-info" role="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
     
     <script

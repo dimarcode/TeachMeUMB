@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
+
     <div class="row">
         <!-- Tutor Info -->
         <div class="col-12 col-md-4 mb-4">
@@ -91,25 +91,9 @@
                     </form>
                 </div>
             </div>
-
-            <!-- Debug Information (collapsible) -->
-            <div class="accordion" id="debugAccordion">
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingDebug">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDebug" aria-expanded="false" aria-controls="collapseDebug">
-                            API Debug Information
-                        </button>
-                    </h2>
-                    <div id="collapseDebug" class="accordion-collapse collapse" aria-labelledby="headingDebug" data-bs-parent="#debugAccordion">
-                        <div class="accordion-body">
-                            <div id="rawJsonDiv"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div> <!-- row -->
-</div> <!-- container -->
+
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
