@@ -1,25 +1,105 @@
-<div class="card-header umb-card-header-blue">
-    <div>
-        <h3 class="card-title mb-0">
-            {% if tutor.profile_picture %}
-                <img src="{{ url_for('static', filename='profile_pictures/' + tutor.profile_picture) }}" class="img-thumbnail mb-0 smedium-profile-image" alt="User avatar">
-            {% else %}
-                <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" class="img-thumbnail mb-0 smedium-profile-image" alt="User avatar">
-            {% endif %}
-            <a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a>
-        </h3>
+<div class="card shadow-sm h-100">
+    <!-- Card Header -->
+    <div class="card-header umb-card-header-blue p-3">
+        <div class="d-flex align-items-center">
+            <!-- Profile Image -->
+            <div class="me-3">
+                {% if tutor.profile_picture %}
+                    <img src="{{ url_for('static', filename='profile_pictures/' + tutor.profile_picture) }}" 
+                         class="rounded-circle border shadow-sm" width="60" height="60" alt="{{ tutor.username }}'s profile">
+                {% else %}
+                    <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" 
+                         class="rounded-circle border shadow-sm" width="60" height="60" alt="Default profile">
+                {% endif %}
+            </div>
+            
+            <!-- Name and Status -->
+            <div>
+                <h5 class="card-title mb-0 fw-bold">
+                    <a href="{{ url_for('user', username=tutor.username) }}" class="text-decoration-none text-white">
+                        {{ tutor.username }}
+                    </a>
+                </h5>
+                <span class="badge bg-success">Available</span>
+            </div>
+        </div>
     </div>
-</div>
-<div class="card-body">
-    <p><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
-<p><strong>Email:</strong> {{ tutor.email }}</p>
-    <p class="card-text">
-        <strong>Shared subjects:</strong><br>
-        {% for subject in tutor.my_subjects %}
-            {% if subject in current_user.my_subjects %}
-            <span class="badge bg-primary">{{ subject.name }}<br></span>
-            {% endif %}
-        {% endfor %}
-    </p>
-    <!-- Form for booking appointment --> 
+    
+    <!-- Card Body -->
+    <div class="card-body p-3">
+        <!-- About Section -->
+        <div class="mb-3">
+            <h6 class="card-subtitle mb-2 text-muted">
+                <i class="bi bi-person-lines-fill me-2"></i>About
+            </h6>
+            <p class="card-text">{{ tutor.about_me|truncate(100) or "No bio available" }}</p>
+        </div>
+        
+        <!-- Contact Info -->
+        <div class="mb-3">
+            <h6 class="card-subtitle mb-2 text-muted">
+                <i class="bi bi-envelope me-2"></i>Contact
+            </h6>
+            <p class="card-text">{{ tutor.email }}</p>
+        </div>
+        
+        <!-- Subjects Section -->
+        <div>
+            <h6 class="card-subtitle mb-2 text-muted">
+                <i class="bi bi-journal-bookmark me-2"></i>Shared Subjects
+            </h6>
+            <div class="d-flex flex-wrap gap-1">
+                {% for subject in tutor.my_subjects %}
+                    {% if subject in current_user.my_subjects %}
+                        <span class="badge rounded-pill bg-primary">{{ subject.name }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        
+    </div>
+    
+    {% if not current_user.profile_picture %}  
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+            Book Appointment
+        </button>
+        <div class="d-grid gap-2">
+            <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-person-badge me-1"></i>View Profile
+            </a>
+        </div>
+        <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="staticBackdropLabel">Profile Picture</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                In order to book an appointment, please <a href="{{ url_for('edit_profile') }}">set a profile picture</a>. This helps tutors identify you.                                  </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+            </div>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <form action="{{ url_for('book_appointment') }}" method="post">
+            {{ form.hidden_tag() }}  <!-- Include CSRF token -->
+            <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+            <a href="{{ url_for('book_appointment', tutor_id=tutor.id) }}" class="btn btn-primary btn-sm">Book Appointment</a>
+        </form>
+        <div class="d-grid gap-2">
+            <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-person-badge me-1"></i>View Profile
+            </a>
+        </div>
+    </div>
+    {% endif %}
+    <!-- Card Footer -->
+    
 </div>

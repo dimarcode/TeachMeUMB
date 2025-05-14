@@ -1084,6 +1084,28 @@ def request_class():
     return render_template('request_class.html', title='Request Class', form=form)
 
 
+@app.route('/remove_requested_subject/<int:subject_id>', methods=['POST'])
+@login_required
+def remove_requested_subject(subject_id):
+    # Find the requested subject relationship
+    requested_subject = db.session.query(RequestedSubject).filter(
+        RequestedSubject.subject_id == subject_id,
+        RequestedSubject.student_id == current_user.id
+    ).first_or_404()
+    
+    try:
+        # Delete the relationship
+        db.session.delete(requested_subject)
+        db.session.commit()
+        flash(f"Successfully removed your requested class", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error removing class request: {str(e)}", "danger")
+    
+    return redirect(url_for('user', username=current_user.username))
+
+
+
 ###################
 # MESSAGES SYSTEM #
 ###################

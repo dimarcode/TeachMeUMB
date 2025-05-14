@@ -1,63 +1,126 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row">
+    
+        
+    <h1><i class="bi bi-calendar-event"></i> Book Appointment with <a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a></h1><br>
+    <div class="row gutters-sm">
         <!-- Tutor Info -->
-        <div class="col-12 col-md-4 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h4 class="card-title mb-2">Book Appointment with <span class="text-primary"><a href="{{ url_for('user', username=tutor.username) }}">{{ tutor.username }}</a></span></h4>
-                    <p class="mb-1"><strong>About:</strong> {{ tutor.about_me or "No bio available" }}</p>
-                    <p class="mb-1"><strong>Email:</strong> <a href="mailto:{{ tutor.email }}">{{ tutor.email }}</a></p>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow">
+                <!-- Card Header with Profile Image -->
+                <div class="card-header umb-card-header-blue py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            {% if tutor.profile_picture %}
+                                <img src="{{ url_for('static', filename='profile_pictures/' + tutor.profile_picture) }}" 
+                                    class="rounded-circle border border-3 border-white shadow" width="80" height="80" 
+                                    alt="{{ tutor.username }}'s profile">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" 
+                                    class="rounded-circle border border-3 border-white shadow" width="80" height="80" 
+                                    alt="Default profile">
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h4 class="card-title mb-0 text-white">{{ tutor.username }}</h4>
+                            <span class="badge bg-light text-dark">Tutor</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card Body with Information -->
+                <div class="card-body p-3">
+                    <!-- About Section -->
+                    <div class="mb-3">
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            <i class="bi bi-person-badge me-2"></i>About
+                        </h6>
+                        <p class="card-text">{{ tutor.about_me or "No bio available" }}</p>
+                    </div>
+                    
+                    <!-- Contact Section -->
+                    <div class="mb-2">
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            <i class="bi bi-envelope me-2"></i>Contact
+                        </h6>
+                        <p class="card-text">
+                            <a href="mailto:{{ tutor.email }}" class="text-decoration-none">
+                                {{ tutor.email }}
+                            </a>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Card Footer with Actions -->
+                <div class="card-footer bg-transparent border-top p-3">
+                    <a href="{{ url_for('user', username=tutor.username) }}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-person me-2"></i>View Full Profile
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- Calendar & Form -->
-        <div class="col-12 col-md-8">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <!-- Calendar Navigation -->
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button id="prev-week" class="btn btn-outline-primary btn-sm">&larr; Previous Week</button>
-                        <h5 id="current-week" class="text-center mb-0"></h5>
-                        <button id="next-week" class="btn btn-outline-primary btn-sm">Next Week &rarr;</button>
+<div class="col-md-8 mb-3">
+    <div class="card shadow mb-4">
+        <!-- Added Card Header -->
+        <div class="card-header umb-card-header-blue py-3">
+            <h4 class="mb-0 text-white"><i class="bi bi-calendar-check me-2"></i>Schedule Appointment</h4>
+        </div>
+        
+        <div class="card-body-container p-4">
+            <!-- Calendar Navigation - Enhanced with better styling -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <button id="prev-week" class="btn btn-outline-primary"><i class="bi bi-chevron-left"></i> Previous</button>
+                <h5 id="current-week" class="text-center mb-0 fw-bold"></h5>
+                <button id="next-week" class="btn btn-outline-primary">Next <i class="bi bi-chevron-right"></i></button>
+            </div>
+
+            <!-- Calendar Table - Added border and background -->
+            <div class="table-responsive mb-4 border rounded bg-light p-2">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="calendar-header bg-white">
+                        <tr>
+                            {% for i in range(7) %}
+                            <th scope="col" id="day-{{ i }}" class="day border px-1">
+                                <button type="button" class="clickable-day btn btn-link text-truncate w-100 small"></button>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <!-- Booking Form - Added sections with borders -->
+            <form method="post">
+                {{ form.hidden_tag() }}
+                <input type="hidden" name="tutor_id" value="{{ tutor.id }}" id="tutor_id">
+                <input type="hidden" id="selected_date" name="booking_date" value="">
+                <input type="hidden" id="selected_time" name="booking_time">
+
+                <!-- Selected Date Display - Enhanced styling -->
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span class="fw-semibold" id="date-display">Selected Date: None</span>
+                </div>
+
+                <!-- Time Slots - Enhanced with card styling -->
+                <div class="card border-light mb-4">
+                    <div class="card-header umb-card-header-white">
+                        <label class="fw-semibold mb-0"><i class="bi bi-clock me-2"></i>Available Time Slots</label>
                     </div>
-
-                    <!-- Calendar Table -->
-                    <div class="table-responsive-sm mb-4">
-                        <table class="table table-sm align-middle">
-                            <thead class="calendar-header">
-                                <tr>
-                                    {% for i in range(7) %}
-                                    <th scope="col" id="day-{{ i }}" class="day border px-1">
-                                        <button type="button" class="clickable-day btn btn-link text-truncate w-100 small"></button>
-                                    </th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                        </table>
+                    <div class="card-body">
+                        <div id="time_slots" class="d-flex flex-wrap gap-2"></div>
                     </div>
+                </div>
 
-                    <!-- Booking Form -->
-                    <form method="post">
-                        {{ form.hidden_tag() }}
-                        <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
-
-                        <!-- Selected Date Display -->
-                        <div class="mb-3">
-                            <span class="fw-semibold" id="date-display">Selected Date: None</span>
-                        </div>
-                        <input type="hidden" id="selected_date" name="booking_date" value="">
-                        <input type="hidden" id="selected_time" name="booking_time">
-
-                        <!-- Time Slots -->
-                        <div class="form-group mb-3">
-                            <label class="fw-semibold">Available Time Slots:</label>
-                            <div id="time_slots" class="d-flex flex-wrap gap-2"></div>
-                        </div>
-
+                <!-- Form Fields -->
+                <div class="card border-light mb-4">
+                    <div class="card-header umb-card-header-white">
+                        <h6 class="mb-0 fw-semibold"><i class="bi bi-pencil-square me-2"></i>Appointment Details</h6>
+                    </div>
+                    <div class="card-body">
                         <!-- Subject Selection -->
                         <div class="form-group mb-3">
                             <label for="subject_id" class="fw-semibold">Select Subject:</label>
@@ -72,40 +135,40 @@
                         <!-- Location Selection -->
                         <div class="form-group mb-3">
                             {{ form.location_id.label(class="fw-semibold") }}
-                            {{ form.location_id(class="form-control") }}
+                            {{ form.location_id(class="form-select") }}
                             {% for error in form.location_id.errors %}
                             <span class="text-danger">{{ error }}</span>
                             {% endfor %}
                         </div>
 
                         <!-- Additional Notes -->
-                        <div class="form-group mb-3">
+                        <div class="form-group">
                             {{ form.directions.label(class="fw-semibold") }}
-                            {{ form.directions(class="form-control") }}
+                            {{ form.directions(class="form-control", placeholder="Add any additional information here...") }}
                             {% for error in form.directions.errors %}
                             <span class="text-danger">{{ error }}</span>
                             {% endfor %}
                         </div>
-
-                        <button type="submit" class="btn btn-primary w-100" id="submit-btn" disabled>Book Appointment</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Debug Information (collapsible) -->
-            <div class="accordion" id="debugAccordion">
-                <div class="accordion-item">
-                    
-                    <div id="collapseDebug" class="accordion-collapse collapse" aria-labelledby="headingDebug" data-bs-parent="#debugAccordion">
-                        
-                            <div id="rawJsonDiv"></div>
-                        
                     </div>
                 </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" disabled>
+                    <i class="bi bi-calendar-check me-2"></i>Book Appointment
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Debug Information (collapsible) - kept intact -->
+    <div class="accordion" id="debugAccordion">
+        <div class="accordion-item">
+            <div id="collapseDebug" class="accordion-collapse collapse" aria-labelledby="headingDebug" data-bs-parent="#debugAccordion">
+                <div id="rawJsonDiv"></div>
             </div>
         </div>
-    </div> <!-- row -->
-</div> <!-- container -->
+    </div>
+</div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 

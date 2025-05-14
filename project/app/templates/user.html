@@ -173,25 +173,38 @@
                     <!-- /CURRENT CLASSES -->
 
                     <!-- REQUESTED CLASSES -->
-                    {% if current_user.is_authenticated and user == current_user and current_user.role == UserRole.STUDENT %}
-                        {% if requested_subjects %}
-                        <div class="card shadow-lg">
-                            <div class="card-header umb-card-header-blue">
-                                <h4 class="mb-0">Your Requested Classes</h4>
+                    {% if current_user.is_authenticated and user.role == UserRole.STUDENT and requested_subjects %}
+                        <div class="card shadow mt-4">
+                            <div class="card-header umb-card-header-blue d-flex justify-content-between align-items-center class-header">
+                                {% if user == current_user %}
+                                    <h5 class="mb-0">Your Requested Classes</h5>
+                                    <a href="{{ url_for('request_class') }}" class="btn btn-success" type="button">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                {% else %}
+                                    <h5 class="mb-0">{{ user.username }} has requested the following classes:</h5>
+                                {% endif %}
                             </div>
                             <div class="card-body">
-                                <p class="lead text-muted">You have requested the following classes:</p>
-                    
-                                <ul class="list-group">
+                                <ul class="list-group list-group-flush">
                                     {% for subject in requested_subjects %}
-                                        <li class="list-group-item">
-                                            <div class="align-items0-center" ><strong>{{ subject.name }}</strong> - {{ subject.topic }}</div>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div class="align-items-center">
+                                                <strong>{{ subject.name }}</strong> - {{ subject.topic }}
+                                            </div>
+                                            {% if user == current_user %}
+                                                <form action="{{ url_for('remove_requested_subject', subject_id=subject.id) }}" method="post" style="display: inline;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="bi bi-trash"></i> Remove
+                                                    </button>
+                                                </form>
+                                            {% endif %}
                                         </li>
                                     {% endfor %}
                                 </ul>
-                            </div>  
+                            </div>
                         </div>
-                        {% endif %}
                     {% endif %}
                     <!-- /REQUESTED CLASSES -->
 
