@@ -2,7 +2,51 @@
 {% import 'bootstrap_wtf.html' as wtf %}
 
 {% block content %}
-<h2>Begin Appointment</h2>
-{{ wtf.quick_form(form) }}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header umb-card-header-blue">
+                    <h4 class="mb-0">Record Appointment Times</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Appointment context information -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="mb-2">Appointment with {{ appointment.student.username }}</h5>
+                        <p class="mb-1"><strong>Subject:</strong> {{ appointment.subject.name }}</p>
+                        <p class="mb-1"><strong>Scheduled:</strong> {{ moment(appointment.booking_date).format('LL') }} at {{ moment(appointment.booking_time).format('LT') }}</p>
+                        <p class="mb-0"><strong>Location:</strong> {{ appointment.appointment_location.name }}</p>
+                    </div>
+                    
+                    <p class="lead mb-4">Please record the actual start and end times of this appointment.</p>
+                    
+                    <form method="POST" action="" class="form">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">{{ form.start_time.label }}</label>
+                                    {{ form.start_time(class="form-control", type="time") }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">{{ form.end_time.label }}</label>
+                                    {{ form.end_time(class="form-control", type="time") }}
+                                </div>
+                            </div>
+                        </div>
 
+                        <p class="text-muted mb-3"><i class="bi bi-info-circle"></i> When you click Finish, you will be taken to a review screen.</p>
+
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

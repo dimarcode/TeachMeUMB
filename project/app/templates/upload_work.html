@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header umb-card-header-blue">
+                    <h4 class="mb-0">Upload an Example of Your Work</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-4">
+                            <label for="work_example" class="form-label">File</label>
+                            <div class="input-group">
+                                {{ form.work_example(class="form-control", id="work_example") }}
+                                <span class="input-group-text"><i class="bi bi-file-earmark-arrow-up"></i></span>
+                            </div>
+                            <div class="form-text">Accepted formats: .pdf, .jpeg, .jpg, and .png</div>
+                            {% for error in form.work_example.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control") }}
+                            {% for error in form.title.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows="4") }}
+                            <div class="form-text">Describe your work briefly.</div>
+                            {% for error in form.description.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.subject_id.label(class="form-label") }}
+                            {{ form.subject_id(class="form-select") }}
+                            {% for error in form.subject_id.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.upload_terms_agreement.label(class="form-label") }}<br>
+                            <label class="form-check-label" for="agreement">
+                            {{ form.upload_terms_agreement(class="form-check-input") }}
+                            Yes, I agree to the terms in the <a href="{{ url_for('tutor_upload_agreement') }}" target="_blank">Content Upload Agreement</a><br>
+                            </label>
+                            {% for error in form.upload_terms_agreement.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('user', username=current_user.username) }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </a>
+                            {{ form.submit(class="btn btn-success") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Previously uploaded works section -->
+            {% if current_user.work_examples.count() > 0 %}
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Previously Uploaded Work</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for work in current_user.work_examples %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">{{ work.title }}</h6>
+                                <small class="text-muted">{{ work.description }}</small> 
+                                <p class="text-muted">{{ work.timestamp.strftime('%Y-%m-%d') }}</p>
+                                <small class="text-muted">File: {{ work.original_filename }}</small>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-primary" 
+                                    data-bs-toggle="modal" data-bs-target="#previewModal{{ work.id }}">
+                                    <i class="bi bi-eye"></i> View
+                                </button>
+                                <form method="POST" action="{{ url_for('remove_work_example', work_id=work.id) }}" 
+                                    class="d-inline" onsubmit="return confirm('Are you sure you want to delete this work example?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                        <div class="modal fade" id="previewModal{{ work.id }}" tabindex="-1" aria-labelledby="previewModalLabel{{ work.id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="previewModalLabel{{ work.id }}">{{ work.title }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <!-- Preview based on file type -->
+                                {% set file_ext = work.filename.split('.')[-1].lower() %}
+                                    {% if file_ext in ['jpg', 'jpeg', 'png'] %}
+                                        <!-- Image preview -->
+                                        <img src="{{ url_for('static', filename='file_uploads/' + work.filename) }}" class="img-fluid" alt="{{ work.title }}">
+                                    {% elif file_ext == 'pdf' %}
+                                        <!-- PDF preview -->
+                                        <embed src="{{ url_for('static', filename='file_uploads/' + work.filename) }}" type="application/pdf" width="100%" height="600px">
+                                    {% else %}
+                                        <!-- Other file types -->
+                                        <div class="p-5 text-center">
+                                            <i class="bi bi-file-earmark-text display-1"></i>
+                                            <p class="mt-3">This file type ({{ file_ext }}) cannot be previewed directly.</p>
+                                        </div>
+                                    {% endif %}
+                            </div>
+                            <div class="modal-footer">
+                                <a href="{{ url_for('static', filename='file_uploads/' + work.filename) }}" class="btn btn-primary" download>Download</a>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                            </div>
+                        </div>
+                        </div>
+                        
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Optional: Add client-side file validation
+document.getElementById('work_example').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Get file extension
+        const extension = file.name.split('.').pop().toLowerCase();
+        const validExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+        
+        if (!validExtensions.includes(extension)) {
+            alert('Invalid file type! Please upload PDF, JPG, JPEG, or PNG files only.');
+            this.value = ''; // Clear the input
+        }
+        
+        // Check file size (max 5MB)
+        const fileSize = file.size / 1024 / 1024; // in MB
+        if (fileSize > 10) {
+            alert('File size exceeds 10MB! Please upload a smaller file.');
+            this.value = ''; // Clear the input
+        }
+    }
+});
+</script>
+{% endblock %}

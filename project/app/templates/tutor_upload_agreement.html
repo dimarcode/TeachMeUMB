@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header umb-card-header-blue">
+                    <h4 class="mb-0">Tutor Upload Agreement</h4>
+                </div>
+                <div class="card-body p-0">
+                    <embed src="{{ url_for('static', filename='legal/tutor-upload-agreement.pdf') }}" 
+                           type="application/pdf" width="100%" height="800px">
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <a href="{{ url_for('upload_work') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Upload
+                    </a>
+                    <a href="{{ url_for('static', filename='documents/agreements/tutor-upload-agreement.pdf') }}" 
+                       class="btn btn-primary" download>
+                       <i class="bi bi-download"></i> Download PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

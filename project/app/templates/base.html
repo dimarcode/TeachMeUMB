@@ -16,6 +16,7 @@
     <link 
         href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css' 
         rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
     <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -33,12 +34,58 @@
     <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/moment-timezone@6.1.17/index.global.min.js'></script>
 <style>
 
+
+/* -- OLD HTML START SHERE -- */
+   
+   
+   
     body {
         padding-bottom: 60px;
-        padding-top: 60px
+        padding-top: 60px;
+        background-color: #eef6fa;
+        text-align: left;
     }
 
-/* --- navbar --- */
+    .main-body {
+        padding: 15px
+    }
+
+    .gutters-sm {
+        margin-right: -8px;
+        margin-left: -8px;
+    }
+
+    .gutters-sm>.col, .gutters-sm>[class*=col-] {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+    .mb-3, .my-3 {
+        margin-bottom: 1rem!important;
+    }
+
+    .bg-gray-300 {
+        background-color: #e2e8f0;
+    }
+    .h-100 {
+        height: 100%!important;
+    }
+    .shadow-none {
+        box-shadow: none!important;
+    }
+
+    /* --- navbar --- */
+
+    .form-control, .form-floating {
+        background-color: #E4E7EB;
+    }
+
+    .form-label {
+        font-weight: 600;
+    }
+
+    .accordion-item button {
+        background-color: #aabfca;
+    }
 
     .navbar, .card-header {
         background-color: #005a8b;
@@ -48,6 +95,11 @@
     .navbar .nav-link:hover {
         background-color: rgba(255, 255, 255, 0.2);
         border-radius: 0.25rem;
+        color: white;
+    }
+
+    .navbar .navlink {
+        color: #deedf5;
     }
 
     .navbar .nav-link.active {
@@ -68,22 +120,70 @@
         color: #005a8b;
     }
 
-    .card-header-text {
-        color: white;
-    }
-
     .view-details-text {
-        color: #8dc9e9;
-    }
-    .card-title a {
-        color: #8dc9e9;
+        color: #6affdf;
     }
 
-    .card-header {
+    .card {
+        box-shadow: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px 0 rgba(0,0,0,.06);
+    }
+
+    .card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        word-wrap: break-word;
+        background-color: #fff;
+        background-clip: border-box;
+        border: 0 solid rgba(0,0,0,.125);
+        border-radius: .25rem;
+    }
+
+    .card-body, .card-body-container {
+        flex: 1 1 auto;
+        min-height: 1px;
+        padding: 1rem;
+    }
+
+    .card-body-container {
+        background-color:#effaff;
+    }
+
+    .card-title a {
+        color: #00334e;
+    }
+
+    .card-header, .file-upload-header {
         color: white;
         background-color: #005a8b;
+    }
 
-    }   
+    .card-body {
+        background-color: white;
+    }
+
+    .card-body-layered {
+        background-color: #eaf5fb;
+    }
+
+    .card-footer-layered {
+        background-color: #d4f2fb;
+    }
+
+    .umb-card-header-blue {
+        background-color: #4098D7;
+        color: white;
+    }
+
+    .umb-card-header-white {
+        background-color: white;
+        color: #005a8b;
+    }
+
+    .umb-card-header-blue h4 {
+        color: white;
+    }
 
     .btn-primary {
     
@@ -111,24 +211,53 @@
     }
 
     .large-profile-image {
-        max-width: 176px;
-        max-height: 176px;
+        max-width: 80%;
+        height: auto;
+        width: auto\9;
+    }
+
+    /* --- Star Rating --- */
+    .star-rating {
+    direction: rtl;
+    }
+
+    .star-rating input[type="radio"] {
+    display: none;
+    }
+
+    .star-rating label {
+    font-size: 2rem;
+    color: #ccc;
+    cursor: pointer;
+    transition: color 0.2s;
+    }
+
+    .star-rating input[type="radio"]:checked ~ label {
+    color: #ffc107; 
+
+    /* Selected stars */
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+    color: #ffcd39; /* Hover preview */
     }
 
     /* calendar body */
     .fc-scrollgrid-section-body a {
         text-decoration: none;
         color: black;
-
     }
 
     .calendar-scroll {
         overflow-x: auto;
         /* Prevents horizontal overflow on all screen sizes */
     }
+
     .calendar-table {
         min-width: 500px; /* Adjust as needed for your button content */
     }
+
     .calendar-header th {
         padding: 0 !important;
         vertical-align: middle !important;
@@ -197,20 +326,21 @@
                         <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                             <div class="position-relative">
                                 {% if current_user.profile_picture %}
-                                    <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" class="img-thumbnail mb-0 small-profile-image" alt="User avatar">
+                                <img src="{{ url_for('static', filename='profile_pictures/' + current_user.profile_picture) }}" 
+                                    class="rounded-circle border border-3 border-white shadow" width="40" height="40"
+                                    alt="{{ current_user.username }}'s profile">
+        
                                 {% else %}
-                                    <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" class="img-thumbnail mb-0 small-profile-image" width="40" alt="User avatar">
+                                    <img src="{{ url_for('static', filename='profile_pictures/default.png') }}" 
+                                        class="rounded-circle border border-3 border-white shadow" width="40" height="40" 
+                                        alt="Default profile">
                                 {% endif %}
                                 {% if current_user.unread_message_count() or current_user.unread_alert_count() %}
                                     <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
                                         <span class="visually-hidden">New alerts</span>
                                     </span>
                                 {% endif %}
-                            </div>
-                            <span class="d-none d-md-inline">
-                                {{ current_user.username.title() }}
-                            </span>
-                            
+                            </div> 
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                             <li>
@@ -280,15 +410,16 @@
         </div>
     </nav>
     <div class="container-sm mt-3">
-        <hr>
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-            <div class="alert alert-info" role="alert">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-        {% block content %}{% endblock %}
+        <div class="main-body">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-info" role="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+            {% block content %}{% endblock %}
+        </div>
     </div>
     
     <script
@@ -308,6 +439,7 @@
         myInput.focus()
         })
     </script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var popoverTarget = document.getElementById('popoverTarget');
@@ -354,9 +486,23 @@
       {% endif %}
     </script>
     <footer style="background-color: #005a8b; height: 50px;" class="text-white text-center fixed-bottom d-flex align-items-center">
-        <div class="container d-flex justify-content-center gap-4">
-          <a href="mailto:TeachMeUMB@outlook.com" class="text-white text-decoration-underline">Contact Us</a>
-          <a href="{{ url_for('faq') }}" class="text-white text-decoration-underline">FAQs</a>
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{{ url_for('faq') }}" class="text-white text-decoration-underline" title="FAQs">FAQs</a>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span>Contact Us:</span>
+                <a href="mailto:TeachMeUMB@outlook.com" class="text-white text-decoration-none" title="Email">
+                <i class="bi bi-envelope-fill"></i>
+                </a>
+                <a href="http://x.com/teachmeumb" class="text-white text-decoration-none" title="Twitter" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-twitter-x"></i>
+                </a>
+                <a href="https://www.instagram.com/teachmeumb/" class="text-white text-decoration-none" title="Instagram" target="_blank" rel="noopener noreferrer">
+                <i class="bi bi-instagram"></i>
+                </a>
+            </div>
+
         </div>
     </footer>
 </body>
