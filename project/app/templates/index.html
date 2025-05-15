@@ -110,9 +110,17 @@
         
             <ul class="list-group">
                 {% for subject in requested_subjects %}
-                    <li class="list-group-item">
+                    <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
                         {{ subject.name }} - {{ subject.topic }}
+                        <form action="{{ url_for('remove_requested_subject', subject_id=subject.id) }}" method="post" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </form>
                     </li>
+                    
+                    
                 {% endfor %}
             </ul>
         {% endif %}

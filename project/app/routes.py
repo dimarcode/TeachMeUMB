@@ -1102,7 +1102,7 @@ def remove_requested_subject(subject_id):
         db.session.rollback()
         flash(f"Error removing class request: {str(e)}", "danger")
     
-    return redirect(url_for('user', username=current_user.username))
+    return redirect(request.referrer or url_for('user', username=current_user.username))
 
 
 
