@@ -1,0 +1,25 @@
+import os
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or '73509bae22d3f63327665b77b1bdd6f67c158116533db948b0fd5dcb81d8f8ae'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'sqlite:///' + os.path.join(basedir, 'app.db')
+    MAIL_SERVER = os.environ.get('MAIL_SERVER')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 25)
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS') is not None
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    ADMINS = ['your-email@example.com']
+    POSTS_PER_PAGE = 25
+
+    DEBUG = False
+    TESTING = False
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB limit
+
+class ProductionConfig(Config):
+    DEBUG = False
